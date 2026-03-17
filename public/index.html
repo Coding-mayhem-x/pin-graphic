@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Honeycomb Circles Simulator</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app">
+    <aside class="side">
+      <h1>Kontrola</h1>
+      <div class="panel">
+        <button id="btnAddOne">Add one</button>
+        <button id="btnAddSix">Add six</button>
+        <button id="btnAddRing">Add ring</button>
+        <button id="btnReset" class="danger">Reset</button>
+      </div>
+      <div class="info">
+        <div><strong>Srednica (px):</strong> <span id="diameterPx">-</span></div>
+        <div><strong>Obszar (srednice):</strong> 90 × 60</div>
+        <div><strong>Kola:</strong> <span id="count">0</span></div>
+      </div>
+          <section class="palette">
+        <h2>Kolory</h2>
+        <div class="palette-controls">
+          <select id="paletteSelect" title="Wybór koloru"></select>
+          <button id="btnAddRandomColor">Add random (selected)</button>"`r`n          <button id=\"btnAddRandomAny\">Add random (any)</button>"
+        </div>
+        <div class="palette-list" id="paletteList"></div>
+        <div class="palette-actions">
+          <button id="btnPaletteAdd">Add color</button>
+          <button id="btnPaletteReset" class="danger">Reset palette</button>
+        </div>
+      </section></aside>
+    <main class="stage">
+      <div id="svgHost" class="host" aria-label="obszar rysowania"></div>
+    </main>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>

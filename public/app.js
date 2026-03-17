@@ -461,11 +461,19 @@ function main() {
     document.getElementById('btnAddSix').onclick = () => model.addSix();
     document.getElementById('btnAddRing').onclick = () => model.addRing();
     document.getElementById('btnReset').onclick = () => model.reset();
-    document.getElementById('btnAddRandomColor').onclick = () => { var _a; const sel = palette.selected; if (!sel)
-        return; const strat = ((_a = document.getElementById('strategySelect')) === null || _a === void 0 ? void 0 : _a.value) || 'frontier'; if (strat === 'clock')
-        model.addClockWithColor(sel.value);
-    else
-        model.addRandomWithColor(sel.value); };
+    document.getElementById('btnAddRandomColor').onclick = () => { var _a; const strat = ((_a = document.getElementById('strategySelect')) === null || _a === void 0 ? void 0 : _a.value) || 'frontier'; if (strat === 'clock') {
+        const all = palette.colors;
+        if (!all.length)
+            return;
+        const pick = all[Math.floor(Math.random() * all.length)].value;
+        model.addClockWithColor(pick);
+    }
+    else {
+        const sel = palette.selected;
+        if (!sel)
+            return;
+        model.addRandomWithColor(sel.value);
+    } };
     document.getElementById('btnAddRandomAny').onclick = () => { var _a; const all = palette.colors; if (!all.length)
         return; const pick = all[Math.floor(Math.random() * all.length)].value; const strat = ((_a = document.getElementById('strategySelect')) === null || _a === void 0 ? void 0 : _a.value) || 'frontier'; if (strat === 'clock')
         model.addClockWithColor(pick);

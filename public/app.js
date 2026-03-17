@@ -55,8 +55,9 @@ else { c.removeAttribute("stroke"); c.removeAttribute("stroke-width"); c.removeA
     updateCount(){ this.countLabel.textContent=String(this.order.length); }
   }
 
-  function main(){ const host=document.getElementById('svgHost'); if(!host) return; const model=new Honeycomb(host); const palette=new PaletteManager(); document.getElementById('btnAddOne').onclick=()=>model.addOne(); document.getElementById('btnAddSix').onclick=()=>model.addSix(); document.getElementById('btnAddRing').onclick=()=>model.addRing(); document.getElementById('btnReset').onclick=()=>model.reset(); document.getElementById('btnAddRandomColor').onclick=()=>{ const sel=palette.selected; if(!sel) return; model.addRandomWithColor(sel.value); } }
+  function main(){ const host=document.getElementById('svgHost'); if(!host) return; const model=new Honeycomb(host); const palette=new PaletteManager(); document.getElementById('btnAddOne').onclick=()=>model.addOne(); document.getElementById('btnAddSix').onclick=()=>model.addSix(); document.getElementById('btnAddRing').onclick=()=>model.addRing(); document.getElementById('btnReset').onclick=()=>model.reset(); document.getElementById('btnAddRandomColor').onclick=()=>{ const sel=palette.selected; if(!sel) return; model.addRandomWithColor(sel.value); }; document.getElementById('btnAddRandomAny').onclick=()=>{ const all=palette.colors; if(!all.length) return; const pick=all[Math.floor(Math.random()*all.length)].value; model.addRandomWithColor(pick); } }
   document.addEventListener('DOMContentLoaded', main);
 })();
+
 
 

@@ -531,79 +531,6 @@ class Honeycomb {
         // fallback new in wedge
         return this.placeAsNewInWedge(color, center2);
     }
-    addClockV3WithColor(color) {
-        this.ensureSeed();
-        const comps = this.componentsOfColor(color);
-        if (comps.length === 0) {
-            const hour0 = Math.floor(Math.random() * 12);
-            const center0 = Math.PI / 2 + hour0 * (Math.PI / 6);
-            return this.placeAsNewInWedge(color, center0);
-        }
-        const freesPerComp = [];
-        const union = new Map();
-        for (const comp of comps) {
-            const centroid = this.centroidOfGroup(comp);
-            const frees = this.freeNeighbors(comp);
-            const uniq = [];
-            const seen = new Set();
-            for (const f of frees) {
-                const k = this.key(f);
-                if (seen.has(k))
-                    continue;
-                seen.add(k);
-                uniq.push(f);
-                if (!union.has(k))
-                    union.set(k, f);
-            }
-            freesPerComp.push({ comp, frees: uniq, centroid });
-        }
-        if (union.size === 1) {
-            const only = Array.from(union.values())[0];
-            const p = this.axialToPoint(only);
-            this.place(only, color);
-            this.renderCircle(only, p);
-            this.updateCount();
-            return true;
-        }
-        const candidates = freesPerComp.filter(e => e.frees.length > 0);
-        const hour = Math.floor(Math.random() * 12);
-        const center = Math.PI / 2 + hour * (Math.PI / 6);
-        if (candidates.length) {
-            let minCount = Math.min.apply(null, candidates.map(e => e.frees.length));
-            const scarce = candidates.filter(e => e.frees.length === minCount);
-            let pick = scarce[0];
-            let best = Infinity;
-            for (const e of scarce) {
-                const ang = this.angleOfPoint(e.centroid);
-                const d = this.angleDiff(ang, center);
-                if (d < best) {
-                    best = d;
-                    pick = e;
-                }
-            }
-            let bestNode = null;
-            let bestScore = Infinity;
-            for (const n of pick.frees) {
-                const pt = this.axialToPoint(n);
-                const dAng = this.angleDiff(this.angleOfPoint(pt), center);
-                const dx = pt.x - pick.centroid.x, dy = pt.y - pick.centroid.y;
-                const d2 = dx * dx + dy * dy;
-                const score = dAng * 10 + d2 / (this.radius * this.radius + 1);
-                if (score < bestScore) {
-                    bestScore = score;
-                    bestNode = n;
-                }
-            }
-            if (bestNode) {
-                const pb = this.axialToPoint(bestNode);
-                this.place(bestNode, color);
-                this.renderCircle(bestNode, pb);
-                this.updateCount();
-                return true;
-            }
-        }
-        return this.placeAsNewInWedge(color, center);
-    }
     addAnywhereWithColor(color) {
         this.ensureSeed();
         const attempts = 300;
@@ -707,7 +634,6 @@ function main() {
     document.getElementById('btnAddOne').onclick = () => model.addOne();
     document.getElementById('btnAddSix').onclick = () => model.addSix();
     document.getElementById('btnAddRing').onclick = () => model.addRing();
-    document.getElementById('btnReset').onclick = () => model.reset();
     document.getElementById('btnAddRng').onclick = () => { const cols = (new PaletteManager()).colors.map(c => c.value); if (!cols.length)
         return; const total = Math.ceil(cols.length * 1.7); const picks = []; for (const c of cols)
         picks.push(c); while (picks.length < total) {
@@ -737,13 +663,6 @@ function main() {
             const pick = all[Math.floor(Math.random() * all.length)].value;
             model.addClockV2WithColor(pick);
         }
-        else if (strat === 'clock3') {
-            const all = palette.colors;
-            if (!all.length)
-                return;
-            const pick = all[Math.floor(Math.random() * all.length)].value;
-            model.addClockV3WithColor(pick);
-        }
         else {
             const sel = palette.selected;
             if (!sel)
@@ -756,9 +675,58 @@ function main() {
         model.addClockWithColor(pick);
     else if (strat === 'clock2')
         model.addClockV2WithColor(pick);
-    else if (strat === 'clock3')
-        model.addClockV3WithColor(pick);
     else
         model.addRandomWithColor(pick); };
 }
 document.addEventListener('DOMContentLoaded', main);
+class ImageSampler {
+    constructor() {
+        this.w = 0;
+        this.h = 0;
+        this.ready = false;
+        this.data = null;
+        this.canvas = document.createElement('canvas');
+        const c = this.canvas.getContext('2d');
+        if (!c)
+            throw new Error('2d ctx');
+        this.ctx = c;
+    }
+    async loadFile(file) {
+        const url = await new Promise((resolve, reject) => { const fr = new FileReader(); fr.onload = () => resolve(String(fr.result)); fr.onerror = () => reject(fr.error); fr.readAsDataURL(file); });
+        const img = await new Promise((resolve, reject) => { const im = new Image(); im.onload = () => resolve(im); im.crossOrigin = 'anonymous'; im.onerror = (e) => reject(e); im.src = url; });
+        this.w = img.naturalWidth || img.width;
+        this.h = img.naturalHeight || img.height;
+        this.canvas.width = this.w;
+        this.canvas.height = this.h;
+        this.ctx.drawImage(img, 0, 0);
+        this.data = this.ctx.getImageData(0, 0, this.w, this.h);
+        this.ready = true;
+    }
+    isReady() { return this.ready && !!this.data; }
+    sampleAt(p, areaW, areaH, fit) {
+        if (!this.data)
+            return null;
+        const imgW = this.w, imgH = this.h;
+        let sx = areaW / imgW, sy = areaH / imgH, offX = 0, offY = 0;
+        if (fit === 'cover') {
+            const s = Math.max(sx, sy);
+            sx = sy = s;
+        }
+        else if (fit === 'contain') {
+            const s = Math.min(sx, sy);
+            sx = sy = s;
+        }
+        offX = (areaW - imgW * sx) / 2;
+        offY = (areaH - imgH * sy) / 2;
+        const ax = p.x + areaW / 2, ay = p.y + areaH / 2;
+        const ix = (ax - offX) / sx, iy = (ay - offY) / sy;
+        const x = Math.floor(ix), y = Math.floor(iy);
+        if (x < 0 || y < 0 || x >= imgW || y >= imgH)
+            return null;
+        const idx = (y * imgW + x) * 4;
+        const d = this.data.data;
+        return { r: d[idx], g: d[idx + 1], b: d[idx + 2] };
+    }
+}
+function srgbToLinear(v) { v /= 255; return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }
+function rgbDist2(a, b) { const ar = srgbToLinear(a.r), ag = srgbToLinear(a.g), ab = srgbToLinear(a.b); const br = srgbToLinear(b.r), bg = srgbToLinear(b.g), bb = srgbToLinear(b.b); const dr = ar - br, dg = ag - bg, db = ab - bb; return dr * dr + dg * dg + db * db; }

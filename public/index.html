@@ -47,7 +47,22 @@
           <button id="btnSpeedUp" title="Faster"><svg class="icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg></button>
           <span class="speed" id="speedLabel">5×/s</span>
         </div>
-      </section></section></aside>
+            <section class="import">
+        <h2>Import</h2>
+        <div class="import-controls">
+          <input type="file" id="imgFile" accept="image/*" />
+          <label>
+            Fit
+            <select id="imgFit">
+              <option value="cover">Cover</option>
+              <option value="contain">Contain</option>
+              <option value="fill">Fill</option>
+            </select>
+          </label>
+          <button id="btnMapNow">Map Now</button>
+        </div>
+      </section>
+    u003C/sectionu003Eu003C/sectionu003Eu003C/asideu003E
     <main class="stage">
       <div id="svgHost" class="host" aria-label="obszar rysowania"></div>
     </main>
@@ -76,6 +91,7 @@
   </script>
 </body>
 </html>
+
 
 
 

@@ -398,6 +398,30 @@ function main() {
     else { const sel = palette.selected; if (!sel) return; model.addRandomWithColor(sel.value); }
   };
   (document.getElementById('btnAddRandomAny') as HTMLButtonElement).onclick = () => { const all = palette.colors; if (!all.length) return; const pick = all[Math.floor(Math.random() * all.length)].value; const strat = (document.getElementById('strategySelect') as HTMLSelectElement)?.value || 'frontier'; if (strat === 'clock') model.addClockWithColor(pick); else if (strat === 'clock2') model.addClockV2WithColor(pick); else if (strat === 'clock3') model.addClockV3WithColor(pick); else model.addRandomWithColor(pick); };
+  const imgSampler = new ImageSampler();
+  const fileInput = document.getElementById('imgFile') as HTMLInputElement | null;
+  const fitSelect = document.getElementById('imgFit') as HTMLSelectElement | null;
+  const btnMapNow = document.getElementById('btnMapNow') as HTMLButtonElement | null;
+  if (fileInput) fileInput.onchange = async () => {
+    const f = fileInput.files && fileInput.files[0];
+    if (f) { try { await imgSampler.loadFile(f); } catch(e) { console.error('image load error', e); } }
+  };
+  if (btnMapNow) btnMapNow.onclick = async () => {
+    if (!imgSampler.isReady()) { console.warn('No image loaded'); return; }
+    const fit = ((fitSelect?.value || 'cover') as any);
+    // Build full honeycomb first
+    let guard=0; while (model.addOne()) { if(++guard>150000) break; }
+    // Recolor all
+    const o: any = model; const pal = new PaletteManager().colors; const order: any[] = o.order || [];
+    for (const a of order) {
+      const p = o.axialToPoint(a);
+      const rgb = imgSampler.sampleAt(p, o.areaW, o.areaH, fit) || { r: 16, g: 19, b: 26 };
+      let best = pal[0]?.value || '#000000'; let bestD = Infinity;
+      for (const e of pal) { const pr = parseCssColorToRgb(e.value) || {r:0,g:0,b:0}; const dr = (pr.r/255) - (rgb.r/255); const dg = (pr.g/255) - (rgb.g/255); const db = (pr.b/255) - (rgb.b/255); const d = dr*dr+dg*dg+db*db; if (d < bestD) { bestD = d; best = e.value; } }
+      o.colorByKey.set(o.key(a), best);
+    }
+    o.renderAll();
+  };
 }
 
 document.addEventListener('DOMContentLoaded', main);
@@ -434,6 +458,8 @@ class ImageSampler {
 }
 function srgbToLinear(v:number): number { v/=255; return v<=0.04045? v/12.92 : Math.pow((v+0.055)/1.055,2.4); }
 function rgbDist2(a: RGB, b: RGB): number { const ar=srgbToLinear(a.r), ag=srgbToLinear(a.g), ab=srgbToLinear(a.b); const br=srgbToLinear(b.r), bg=srgbToLinear(b.g), bb=srgbToLinear(b.b); const dr=ar-br, dg=ag-bg, db=ab-bb; return dr*dr+dg*dg+db*db; }
+
+
 
 
 

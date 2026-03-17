@@ -759,6 +759,60 @@ function main() {
         model.addClockV3WithColor(pick);
     else
         model.addRandomWithColor(pick); };
+    const imgSampler = new ImageSampler();
+    const fileInput = document.getElementById('imgFile');
+    const fitSelect = document.getElementById('imgFit');
+    const btnMapNow = document.getElementById('btnMapNow');
+    if (fileInput)
+        fileInput.onchange = async () => {
+            const f = fileInput.files && fileInput.files[0];
+            if (f) {
+                try {
+                    await imgSampler.loadFile(f);
+                }
+                catch (e) {
+                    console.error('image load error', e);
+                }
+            }
+        };
+    if (btnMapNow)
+        btnMapNow.onclick = async () => {
+            var _a;
+            if (!imgSampler.isReady()) {
+                console.warn('No image loaded');
+                return;
+            }
+            const fit = ((fitSelect === null || fitSelect === void 0 ? void 0 : fitSelect.value) || 'cover');
+            // Build full honeycomb first
+            let guard = 0;
+            while (model.addOne()) {
+                if (++guard > 150000)
+                    break;
+            }
+            // Recolor all
+            const o = model;
+            const pal = new PaletteManager().colors;
+            const order = o.order || [];
+            for (const a of order) {
+                const p = o.axialToPoint(a);
+                const rgb = imgSampler.sampleAt(p, o.areaW, o.areaH, fit) || { r: 16, g: 19, b: 26 };
+                let best = ((_a = pal[0]) === null || _a === void 0 ? void 0 : _a.value) || '#000000';
+                let bestD = Infinity;
+                for (const e of pal) {
+                    const pr = parseCssColorToRgb(e.value) || { r: 0, g: 0, b: 0 };
+                    const dr = (pr.r / 255) - (rgb.r / 255);
+                    const dg = (pr.g / 255) - (rgb.g / 255);
+                    const db = (pr.b / 255) - (rgb.b / 255);
+                    const d = dr * dr + dg * dg + db * db;
+                    if (d < bestD) {
+                        bestD = d;
+                        best = e.value;
+                    }
+                }
+                o.colorByKey.set(o.key(a), best);
+            }
+            o.renderAll();
+        };
 }
 document.addEventListener('DOMContentLoaded', main);
 class ImageSampler {

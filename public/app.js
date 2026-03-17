@@ -713,6 +713,21 @@ class Honeycomb {
         this.renderAll();
     }
     clearHalftone() { this.sizeFactorByKey.clear(); this.renderAll(); }
+    applyDitherMixFromSampler(s, fit, palette) {
+        if (!s || !s.isReady || !s.isReady()) {
+            return;
+        }
+        for (const a of this.order) {
+            const p = this.axialToPoint(a);
+            const rgb = s.sampleAt(p, this.areaW, this.areaH, fit) || { r: 16, g: 19, b: 26 };
+            const pair = nearestTwoFromPalette(rgb, palette);
+            const r = pair.db / Math.max(1e-6, (pair.da + pair.db));
+            const thr = bayer8(a.u, a.v);
+            const pick = (r >= thr) ? pair.a : pair.b;
+            this.colorByKey.set(this.key(a), pick);
+        }
+        this.renderAll();
+    }
     updateCount() { this.countLabel.textContent = String(this.order.length); }
 }
 function main() {

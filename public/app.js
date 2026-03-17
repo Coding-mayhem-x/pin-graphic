@@ -135,6 +135,8 @@ class PaletteManager {
 }
 class Honeycomb {
     constructor(host) {
+        this.hoverAxial = null;
+        this.getColor = null;
         this.placed = new Set();
         this.frontier = new Set();
         this.order = [];
@@ -152,7 +154,19 @@ class Honeycomb {
         this.svg.append(this.rect, this.gCircles);
         host.innerHTML = '';
         host.appendChild(this.svg);
-        this.rect.setAttribute('class', 'area');
+        n;
+        this.preview = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        n;
+        this.preview.setAttribute('class', 'preview');
+        n;
+        this.preview.setAttribute('r', String(this.radius));
+        n;
+        this.preview.setAttribute('cx', '0');
+        this.preview.setAttribute('cy', '0');
+        n;
+        this.preview.style.pointerEvents = 'none';
+        n;
+        this.svg.appendChild(this.preview);
         this.diameterLabel = document.getElementById('diameterPx');
         this.countLabel = document.getElementById('count');
         this.reset();
@@ -275,6 +289,58 @@ class Honeycomb {
             }
         }
         return undefined;
+    }
+    setColorProvider(fn) { this.getColor = fn; }
+    enableManual() {
+        const onMove = (ev) => this.handlePointer(ev);
+        const onClick = (ev) => this.handleClick(ev);
+        const onLeave = (_) => { this.hoverAxial = null; this.preview.setAttribute('visibility', 'hidden'); };
+        this.svg.addEventListener('mousemove', onMove);
+        this.svg.addEventListener('mouseleave', onLeave);
+        this.svg.addEventListener('click', onClick);
+    }
+    handlePointer(ev) {
+        const rect = this.svg.getBoundingClientRect();
+        const x = (ev.clientX - rect.left) / rect.width * this.areaW - this.areaW / 2;
+        const y = (ev.clientY - rect.top) / rect.height * this.areaH - this.areaH / 2;
+        const cand = this.candidateForPoint({ x, y });
+        if (!cand) {
+            this.hoverAxial = null;
+            this.preview.setAttribute('visibility', 'hidden');
+            return;
+        }
+        this.hoverAxial = cand;
+        const p = this.axialToPoint(cand);
+        this.preview.setAttribute('cx', String(p.x));
+        this.preview.setAttribute('cy', String(p.y));
+        this.preview.setAttribute('r', String(this.radius));
+        const col = this.getColor ? this.getColor() : undefined;
+        if (col) {
+            this.preview.style.fill = col;
+            this.preview.style.fillOpacity = '0.35';
+        }
+        else {
+            this.preview.style.fill = 'transparent';
+            this.preview.style.fillOpacity = '0';
+        }
+        this.preview.setAttribute('visibility', 'visible');
+    }
+    handleClick(_ev) {
+        if (!this.hoverAxial)
+            return;
+        const k = this.key(this.hoverAxial);
+        const p = this.axialToPoint(this.hoverAxial);
+        if (this.placed.has(k) || !this.withinArea(p))
+            return;
+        const col = this.getColor ? this.getColor() : undefined;
+        this.place(this.hoverAxial, col);
+        this.renderCircle(this.hoverAxial, p);
+        this.updateCount();
+    }
+    candidateForPoint(p) {
+        const a = this.pointToAxialRound(p);
+        const b = this.findNearestFree(a, 40);
+        return b || undefined;
     }
     resizeToHost(host) {
         const w = host.clientWidth, h = host.clientHeight;
@@ -549,6 +615,8 @@ function main() {
         return;
     const model = new Honeycomb(host);
     const palette = new PaletteManager();
+    model.setColorProvider(() => { var _a; return (_a = palette.selected) === null || _a === void 0 ? void 0 : _a.value; });
+    model.enableManual();
     document.getElementById('btnAddOne').onclick = () => model.addOne();
     document.getElementById('btnAddSix').onclick = () => model.addSix();
     document.getElementById('btnAddRing').onclick = () => model.addRing();

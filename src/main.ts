@@ -1,4 +1,4 @@
-﻿/* Clean TypeScript build for Honeycomb Circles Simulator */
+/* Clean TypeScript build for Honeycomb Circles Simulator */
 
 type Axial = { u: number; v: number };
 type Point = { x: number; y: number };
@@ -125,7 +125,7 @@ class PaletteManager {
   }
 }
 
-class Honeycomb {
+class Honeycomb {\n  private preview: SVGCircleElement;\n  private hoverAxial: Axial | null = null;\n  private getColor: (() => string | undefined) | null = null;
   private placed: Set<string> = new Set();
   private frontier: Set<string> = new Set();
   private order: Axial[] = [];
@@ -144,7 +144,7 @@ class Honeycomb {
     this.rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
     this.gCircles = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     this.svg.append(this.rect, this.gCircles); host.innerHTML = ''; host.appendChild(this.svg);
-    this.rect.setAttribute('class', 'area');
+    \n    this.preview = document.createElementNS('http://www.w3.org/2000/svg','circle');\n    this.preview.setAttribute('class','preview');\n    this.preview.setAttribute('r', String(this.radius));\n    this.preview.setAttribute('cx','0'); this.preview.setAttribute('cy','0');\n    this.preview.style.pointerEvents = 'none';\n    this.svg.appendChild(this.preview);
     this.diameterLabel = document.getElementById('diameterPx')!; this.countLabel = document.getElementById('count')!;
     this.reset(); const ro = new ResizeObserver(() => this.resizeToHost(host)); ro.observe(host); this.resizeToHost(host);
   }
@@ -193,9 +193,46 @@ class Honeycomb {
       }
     }
     return undefined;
+  }\n  setColorProvider(fn: () => string | undefined){ this.getColor = fn; }
+  enableManual(){
+    const onMove = (ev: MouseEvent) => this.handlePointer(ev);
+    const onClick = (ev: MouseEvent) => this.handleClick(ev);
+    const onLeave = (_: MouseEvent) => { this.hoverAxial = null; this.preview.setAttribute('visibility','hidden'); };
+    this.svg.addEventListener('mousemove', onMove);
+    this.svg.addEventListener('mouseleave', onLeave);
+    this.svg.addEventListener('click', onClick);
   }
-
-  resizeToHost(host: HTMLElement) {
+  private handlePointer(ev: MouseEvent){
+    const rect = this.svg.getBoundingClientRect();
+    const x = (ev.clientX - rect.left)/rect.width * this.areaW - this.areaW/2;
+    const y = (ev.clientY - rect.top)/rect.height * this.areaH - this.areaH/2;
+    const cand = this.candidateForPoint({x,y});
+    if (!cand) { this.hoverAxial = null; this.preview.setAttribute('visibility','hidden'); return; }
+    this.hoverAxial = cand;
+    const p = this.axialToPoint(cand);
+    this.preview.setAttribute('cx', String(p.x));
+    this.preview.setAttribute('cy', String(p.y));
+    this.preview.setAttribute('r', String(this.radius));
+    const col = this.getColor ? this.getColor() : undefined;
+    if (col) { this.preview.style.fill = col; this.preview.style.fillOpacity = '0.35'; }
+    else { this.preview.style.fill = 'transparent'; this.preview.style.fillOpacity = '0'; }
+    this.preview.setAttribute('visibility','visible');
+  }
+  private handleClick(_ev: MouseEvent){
+    if (!this.hoverAxial) return;
+    const k = this.key(this.hoverAxial);
+    const p = this.axialToPoint(this.hoverAxial);
+    if (this.placed.has(k) || !this.withinArea(p)) return;
+    const col = this.getColor ? this.getColor() : undefined;
+    this.place(this.hoverAxial, col);
+    this.renderCircle(this.hoverAxial, p);
+    this.updateCount();
+  }
+  private candidateForPoint(p: Point): Axial | undefined {
+    const a = this.pointToAxialRound(p);
+    const b = this.findNearestFree(a, 40);
+    return b || undefined;
+  }\n  resizeToHost(host: HTMLElement) {
     const w = host.clientWidth, h = host.clientHeight; const d1 = Math.floor(w / this.areaDiamW), d2 = Math.floor(h / this.areaDiamH); const d = Math.max(2, Math.min(d1, d2));
     this.diameter = d; this.radius = Math.max(1, Math.floor(this.diameter / 2)); this.areaW = this.diameter * this.areaDiamW; this.areaH = this.diameter * this.areaDiamH;
     this.diameterLabel.textContent = String(this.diameter);
@@ -287,7 +324,7 @@ class Honeycomb {
 }
 
 function main() {
-  const host = document.getElementById('svgHost'); if (!host) return; const model = new Honeycomb(host as HTMLElement); const palette = new PaletteManager();
+  const host = document.getElementById('svgHost'); if (!host) return; const model = new Honeycomb(host as HTMLElement); const palette = new PaletteManager(); model.setColorProvider(() => palette.selected?.value); model.enableManual();
   (document.getElementById('btnAddOne') as HTMLButtonElement).onclick = () => model.addOne();
   (document.getElementById('btnAddSix') as HTMLButtonElement).onclick = () => model.addSix();
   (document.getElementById('btnAddRing') as HTMLButtonElement).onclick = () => model.addRing();
@@ -302,3 +339,5 @@ function main() {
 }
 
 document.addEventListener('DOMContentLoaded', main);
+
+

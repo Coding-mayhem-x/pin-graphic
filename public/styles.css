@@ -34,3 +34,4 @@ circle.node{fill:var(--circle);stroke:var(--circle-edge);stroke-width:1}.palette
 .runner-controls button{display:flex;align-items:center;justify-content:center;width:36px;height:32px}
 /* Improve symbol fallback fonts */
 body{font-family: system-ui, Segoe UI, Roboto, Arial, "Segoe UI Symbol", "DejaVu Sans", "Noto Sans Symbols 2", "Noto Sans Symbols", sans-serif}
+circle.preview{fill:#fff;fill-opacity:0.25;stroke:#fff;stroke-dasharray:4 3;stroke-opacity:0.8}

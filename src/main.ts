@@ -440,3 +440,4 @@ function rgbDist2(a: RGB, b: RGB): number { const ar=srgbToLinear(a.r), ag=srgbT
 
 
 
+

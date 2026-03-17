@@ -418,63 +418,10 @@ function main() {
     const fit = ((fitSelect?.value || 'cover') as any);
     // Build full honeycomb first
     let guard=0; while (model.addOne()) { if(++guard>150000) break; }
-    // Recolor all
-    const o: any = model; const pal = new PaletteManager().colors; const order: any[] = o.order || [];
-    for (const a of order) {
-      const p = o.axialToPoint(a);
-      const rgb = imgSampler.sampleAt(p, o.areaW, o.areaH, fit) || { r: 16, g: 19, b: 26 };
-      let best = pal[0]?.value || '#000000'; let bestD = Infinity;
-      for (const e of pal) { const pr = parseCssColorToRgb(e.value) || {r:0,g:0,b:0}; const dr = (pr.r/255) - (rgb.r/255); const dg = (pr.g/255) - (rgb.g/255); const db = (pr.b/255) - (rgb.b/255); const d = dr*dr+dg*dg+db*db; if (d < bestD) { bestD = d; best = e.value; } }
-      o.colorByKey.set(o.key(a), best);
-    }
-    o.renderAll();
-    // Apply fill mode
-    const fillSel = document.getElementById('fillMode') as HTMLSelectElement | null;
-    const mode = (fillSel?.value || 'v1');
-    if (mode === 'v2') { (model as any).applyHalftoneFromSampler(imgSampler, fit); } else { (model as any).clearHalftone(); }
-  };
-}
-
-document.addEventListener('DOMContentLoaded', main);
-
-
-
-
-
-class ImageSampler {
-  private canvas: HTMLCanvasElement;
-  private ctx: CanvasRenderingContext2D;
-  private w = 0; private h = 0; private ready = false;
-  private data: ImageData | null = null;
-  constructor(){ this.canvas = document.createElement('canvas'); const c = this.canvas.getContext('2d'); if(!c) throw new Error('2d ctx'); this.ctx = c as CanvasRenderingContext2D; }
-  async loadFile(file: File): Promise<void> {
-    const url = await new Promise<string>((resolve,reject)=>{ const fr = new FileReader(); fr.onload = () => resolve(String(fr.result)); fr.onerror = () => reject(fr.error); fr.readAsDataURL(file); });
-    const img = await new Promise<HTMLImageElement>((resolve,reject)=>{ const im = new Image(); im.onload = () => resolve(im); (im as any).crossOrigin='anonymous'; im.onerror = (e: any) => reject(e); im.src = url; });
-    this.w = (img as any).naturalWidth || img.width; this.h = (img as any).naturalHeight || img.height; this.canvas.width = this.w; this.canvas.height = this.h; this.ctx.drawImage(img, 0, 0); this.data = this.ctx.getImageData(0,0,this.w,this.h); this.ready = true;
-  }
-  isReady(): boolean { return this.ready && !!this.data; }
-  sampleAt(p: Point, areaW: number, areaH: number, fit: 'cover'|'contain'|'fill'): RGB | null {
-    if(!this.data) return null;
-    const imgW = this.w, imgH = this.h; let sx=areaW/imgW, sy=areaH/imgH, offX=0, offY=0;
-    if (fit === 'cover') { const s = Math.max(sx, sy); sx = sy = s; }
-    else if (fit === 'contain') { const s = Math.min(sx, sy); sx = sy = s; }
-    offX = (areaW - imgW * sx) / 2; offY = (areaH - imgH * sy) / 2;
-    const ax = p.x + areaW/2, ay = p.y + areaH/2;
-    const ix = (ax - offX) / sx, iy = (ay - offY) / sy;
-    const x = Math.floor(ix), y = Math.floor(iy);
-    if (x < 0 || y < 0 || x >= imgW || y >= imgH) return null;
-    const idx = (y * imgW + x) * 4; const d = this.data.data;
-    return { r: d[idx], g: d[idx+1], b: d[idx+2] };
-  }
-}
-function srgbToLinear(v:number): number { v/=255; return v<=0.04045? v/12.92 : Math.pow((v+0.055)/1.055,2.4); }
-function rgbDist2(a: RGB, b: RGB): number { const ar=srgbToLinear(a.r), ag=srgbToLinear(a.g), ab=srgbToLinear(a.b); const br=srgbToLinear(b.r), bg=srgbToLinear(b.g), bb=srgbToLinear(b.b); const dr=ar-br, dg=ag-bg, db=ab-bb; return dr*dr+dg*dg+db*db; }
-
-
-
-
-
-
-
-
-
+    const pal = palette.colors;
+    const modeSel = document.getElementById('fillMode') as HTMLSelectElement | null;
+    const mode = (modeSel?.value || 'v1');
+    if (mode === 'v2') { (model as any).applyDitherMixFromSampler(imgSampler, fit, pal); } else {
+      const o:any = model; const order:any[] = o.order || [];
+      for (const a of order){ const p=o.axialToPoint(a); const rgb = imgSampler.sampleAt(p, o.areaW, o.areaH, fit) || {r:16,g:19,b:26}; let best=pal[0]?.value||'#000'; let bestD=Infinity; for(const e of pal){ const pr=parseCssColorToRgb(e.value)||{r:0,g:0,b:0}; const d=rgbDist2(rgb,pr); if(d<bestD){bestD=d; best=e.value;} } o.colorByKey.set(o.key(a), best); } o.renderAll(); }
+    

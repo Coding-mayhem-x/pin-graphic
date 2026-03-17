@@ -808,89 +808,31 @@ function main() {
                 if (++guard > 150000)
                     break;
             }
-            // Recolor all
-            const o = model;
-            const pal = new PaletteManager().colors;
-            const order = o.order || [];
-            for (const a of order) {
-                const p = o.axialToPoint(a);
-                const rgb = imgSampler.sampleAt(p, o.areaW, o.areaH, fit) || { r: 16, g: 19, b: 26 };
-                let best = ((_a = pal[0]) === null || _a === void 0 ? void 0 : _a.value) || '#000000';
-                let bestD = Infinity;
-                for (const e of pal) {
-                    const pr = parseCssColorToRgb(e.value) || { r: 0, g: 0, b: 0 };
-                    const dr = (pr.r / 255) - (rgb.r / 255);
-                    const dg = (pr.g / 255) - (rgb.g / 255);
-                    const db = (pr.b / 255) - (rgb.b / 255);
-                    const d = dr * dr + dg * dg + db * db;
-                    if (d < bestD) {
-                        bestD = d;
-                        best = e.value;
-                    }
-                }
-                o.colorByKey.set(o.key(a), best);
-            }
-            o.renderAll();
-            // Apply fill mode
-            const fillSel = document.getElementById('fillMode');
-            const mode = ((fillSel === null || fillSel === void 0 ? void 0 : fillSel.value) || 'v1');
+            const pal = palette.colors;
+            const modeSel = document.getElementById('fillMode');
+            const mode = ((modeSel === null || modeSel === void 0 ? void 0 : modeSel.value) || 'v1');
             if (mode === 'v2') {
-                model.applyHalftoneFromSampler(imgSampler, fit);
+                model.applyDitherMixFromSampler(imgSampler, fit, pal);
             }
             else {
-                model.clearHalftone();
+                const o = model;
+                const order = o.order || [];
+                for (const a of order) {
+                    const p = o.axialToPoint(a);
+                    const rgb = imgSampler.sampleAt(p, o.areaW, o.areaH, fit) || { r: 16, g: 19, b: 26 };
+                    let best = ((_a = pal[0]) === null || _a === void 0 ? void 0 : _a.value) || '#000';
+                    let bestD = Infinity;
+                    for (const e of pal) {
+                        const pr = parseCssColorToRgb(e.value) || { r: 0, g: 0, b: 0 };
+                        const d = rgbDist2(rgb, pr);
+                        if (d < bestD) {
+                            bestD = d;
+                            best = e.value;
+                        }
+                    }
+                    o.colorByKey.set(o.key(a), best);
+                }
+                o.renderAll();
             }
         };
 }
-document.addEventListener('DOMContentLoaded', main);
-class ImageSampler {
-    constructor() {
-        this.w = 0;
-        this.h = 0;
-        this.ready = false;
-        this.data = null;
-        this.canvas = document.createElement('canvas');
-        const c = this.canvas.getContext('2d');
-        if (!c)
-            throw new Error('2d ctx');
-        this.ctx = c;
-    }
-    async loadFile(file) {
-        const url = await new Promise((resolve, reject) => { const fr = new FileReader(); fr.onload = () => resolve(String(fr.result)); fr.onerror = () => reject(fr.error); fr.readAsDataURL(file); });
-        const img = await new Promise((resolve, reject) => { const im = new Image(); im.onload = () => resolve(im); im.crossOrigin = 'anonymous'; im.onerror = (e) => reject(e); im.src = url; });
-        this.w = img.naturalWidth || img.width;
-        this.h = img.naturalHeight || img.height;
-        this.canvas.width = this.w;
-        this.canvas.height = this.h;
-        this.ctx.drawImage(img, 0, 0);
-        this.data = this.ctx.getImageData(0, 0, this.w, this.h);
-        this.ready = true;
-    }
-    isReady() { return this.ready && !!this.data; }
-    sampleAt(p, areaW, areaH, fit) {
-        if (!this.data)
-            return null;
-        const imgW = this.w, imgH = this.h;
-        let sx = areaW / imgW, sy = areaH / imgH, offX = 0, offY = 0;
-        if (fit === 'cover') {
-            const s = Math.max(sx, sy);
-            sx = sy = s;
-        }
-        else if (fit === 'contain') {
-            const s = Math.min(sx, sy);
-            sx = sy = s;
-        }
-        offX = (areaW - imgW * sx) / 2;
-        offY = (areaH - imgH * sy) / 2;
-        const ax = p.x + areaW / 2, ay = p.y + areaH / 2;
-        const ix = (ax - offX) / sx, iy = (ay - offY) / sy;
-        const x = Math.floor(ix), y = Math.floor(iy);
-        if (x < 0 || y < 0 || x >= imgW || y >= imgH)
-            return null;
-        const idx = (y * imgW + x) * 4;
-        const d = this.data.data;
-        return { r: d[idx], g: d[idx + 1], b: d[idx + 2] };
-    }
-}
-function srgbToLinear(v) { v /= 255; return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }
-function rgbDist2(a, b) { const ar = srgbToLinear(a.r), ag = srgbToLinear(a.g), ab = srgbToLinear(a.b); const br = srgbToLinear(b.r), bg = srgbToLinear(b.g), bb = srgbToLinear(b.b); const dr = ar - br, dg = ag - bg, db = ab - bb; return dr * dr + dg * dg + db * db; }

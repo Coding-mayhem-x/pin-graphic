@@ -81,6 +81,8 @@ class PaletteManager {
     this.renderSelect();
   }
 
+function isVeryDark(rgb: RGB): boolean { return relLuminance(rgb) < 0.04; }
+
   get selected(): ColorEntry | undefined {
     const id = this.selectEl.value;
     return this.data.find(x => x.id === id);
@@ -113,12 +115,13 @@ class PaletteManager {
       { id: 'c2', name: 'Sky', value: '#60a5fa' },
       { id: 'c3', name: 'Dark Blue', value: '#1e3a8a' },
       { id: 'c4', name: 'Black', value: '#000000' },
-      { id: 'c5', name: 'Red', value: '#ef4444' },
-      { id: 'c6', name: 'Brown', value: '#8b5a2b' },
-      { id: 'c7', name: 'Grass Green', value: '#22c55e' },
-      { id: 'c8', name: 'Dark Green', value: '#14532d' },
-      { id: 'c9', name: 'Yellow', value: '#f59e0b' },
-      { id: 'c10', name: 'Orange', value: '#f97316' },
+      { id: 'c5', name: 'White', value: '#ffffff' },
+      { id: 'c6', name: 'Red', value: '#ef4444' },
+      { id: 'c7', name: 'Brown', value: '#8b5a2b' },
+      { id: 'c8', name: 'Grass Green', value: '#22c55e' },
+      { id: 'c9', name: 'Dark Green', value: '#14532d' },
+      { id: 'c10', name: 'Yellow', value: '#f59e0b' },
+      { id: 'c11', name: 'Orange', value: '#f97316' },
     ];
     this.renderList();
     this.save();
@@ -439,27 +442,55 @@ class Honeycomb {
     const fill = this.colorByKey.get(this.key(a));
     if (fill) c.style.fill = fill;
 
-    // Contrast-aware stroke if fill ~ background
+        // Contrast-aware outline / halos
     const bgRgb = this.getSvgBackgroundRgb();
     const fillRgb = parseCssColorToRgb(fill || getComputedStyle(c).fill || '#60a5fa')!;
     const ratio = contrastRatio(fillRgb, bgRgb);
-    if (ratio < 2.0) {
+
+    if (isVeryDark(fillRgb)) {
+      // Two-layer halo for very dark colors (e.g., black)
+      const haloOuter = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      haloOuter.setAttribute('cx', String(p.x));
+      haloOuter.setAttribute('cy', String(p.y));
+      haloOuter.setAttribute('r', String(this.radius));
+      haloOuter.setAttribute('fill', 'none');
+      haloOuter.setAttribute('stroke', '#cbd5e1'); // light gray
+      haloOuter.setAttribute('stroke-width', String(Math.max(4, Math.round(this.radius * 0.42))));
+      haloOuter.setAttribute('stroke-linejoin', 'round');
+      haloOuter.setAttribute('stroke-linecap', 'round');
+
+      const haloInner = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      haloInner.setAttribute('cx', String(p.x));
+      haloInner.setAttribute('cy', String(p.y));
+      haloInner.setAttribute('r', String(this.radius));
+      haloInner.setAttribute('fill', 'none');
+      haloInner.setAttribute('stroke', '#ffffff');
+      haloInner.setAttribute('stroke-width', String(Math.max(3, Math.round(this.radius * 0.28))));
+      haloInner.setAttribute('stroke-linejoin', 'round');
+      haloInner.setAttribute('stroke-linecap', 'round');
+
+      this.gCircles.appendChild(haloOuter);
+      this.gCircles.appendChild(haloInner);
+      // main circle on top
+      this.gCircles.appendChild(c);
+    } else if (ratio < 2.0) {
       c.setAttribute('stroke', '#ffffff');
       c.setAttribute('stroke-width', String(Math.max(3, Math.round(this.radius * 0.3))));
       c.setAttribute('stroke-opacity', '0.95');
       c.setAttribute('shape-rendering', 'geometricPrecision');
+      this.gCircles.appendChild(c);
     } else if (ratio < 3.0) {
       c.setAttribute('stroke', '#ffffff');
       c.setAttribute('stroke-width', String(Math.max(2, Math.round(this.radius * 0.18))));
       c.setAttribute('stroke-opacity', '0.9');
       c.setAttribute('shape-rendering', 'geometricPrecision');
+      this.gCircles.appendChild(c);
     } else {
       c.removeAttribute('stroke');
       c.removeAttribute('stroke-width');
       c.removeAttribute('stroke-opacity');
+      this.gCircles.appendChild(c);
     }
-
-    this.gCircles.appendChild(c);
   }
 
   private updateCount() {
@@ -483,5 +514,6 @@ function main() {
 }
 
 document.addEventListener('DOMContentLoaded', main);
+
 
 

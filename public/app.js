@@ -15,12 +15,13 @@
 {id:"c2",name:"Sky",value:"#60a5fa"},
 {id:"c3",name:"Dark Blue",value:"#1e3a8a"},
 {id:"c4",name:"Black",value:"#000000"},
-{id:"c5",name:"Red",value:"#ef4444"},
-{id:"c6",name:"Brown",value:"#8b5a2b"},
-{id:"c7",name:"Grass Green",value:"#22c55e"},
-{id:"c8",name:"Dark Green",value:"#14532d"},
-{id:"c9",name:"Yellow",value:"#f59e0b"},
-{id:"c10",name:"Orange",value:"#f97316"}
+{id:"c5",name:"White",value:"#ffffff"},
+{id:"c6",name:"Red",value:"#ef4444"},
+{id:"c7",name:"Brown",value:"#8b5a2b"},
+{id:"c8",name:"Grass Green",value:"#22c55e"},
+{id:"c9",name:"Dark Green",value:"#14532d"},
+{id:"c10",name:"Yellow",value:"#f59e0b"},
+{id:"c11",name:"Orange",value:"#f97316"}
 ]; this.renderList(); this.save(); }
     addColor(){ const n=this.data.length+1; const entry={id:'c'+Date.now(),name:`Color ${n}`,value:'#888888'}; this.data.push(entry); this.renderList(); this.save(); }
     deleteColor(id){ this.data=this.data.filter(x=>x.id!==id); this.renderList(); this.save(); }
@@ -41,7 +42,7 @@
     directionOrder(a){ const p=this.axialToPoint(a); const ang=Math.atan2(p.y,p.x); const rot=ang - Math.PI/2; let t=rot; while(t<0) t+=Math.PI*2; const sector=Math.floor((t + Math.PI/6)/(Math.PI/3)) % 6; return sector; }
     resizeToHost(host){ const w=host.clientWidth, h=host.clientHeight; const d1=Math.floor(w/this.areaDiamW); const d2=Math.floor(h/this.areaDiamH); const d=Math.max(2, Math.min(d1,d2)); this.diameter=d; this.radius=Math.max(1, Math.floor(this.diameter/2)); this.areaW=this.diameter*this.areaDiamW; this.areaH=this.diameter*this.areaDiamH; this.diameterLabel.textContent=String(this.diameter); this.svg.setAttribute('viewBox', `${-this.areaW/2} ${-this.areaH/2} ${this.areaW} ${this.areaH}`); this.rect.setAttribute('x', String(-this.areaW/2)); this.rect.setAttribute('y', String(-this.areaH/2)); this.rect.setAttribute('width', String(this.areaW)); this.rect.setAttribute('height', String(this.areaH)); this.renderAll(); }
     withinArea(p){ const R=this.radius; return p.x>=-this.areaW/2+R && p.x<=this.areaW/2-R && p.y>=-this.areaH/2+R && p.y<=this.areaH/2-R; }
-    addOne(){ this.ensureSeed(); while(this.frontier.size){ const a=this.nextCandidate(); if(!a) break; const k=this.key(a); this.frontier.delete(k); const p=this.axialToPoint(a); if(!this.withinArea(p)) { continue; } this.place(a); this.renderCircle(a,p); this.updateCount(); return true; } return false; }
+    addOne(){ this.ensureSeed(); while(this.frontier.size){ const a=this.nextCandidate(); if(!a) break; const k=this.key(a); this.frontier.delete(k); const p=this.axialToPoint(a); if(!this.withinArea(p)) { continue; }\n  function isVeryDark(rgb){ return (0.2126*Math.pow(rgb.r/255<=0.03928? (rgb.r/255)/12.92:Math.pow((rgb.r/255+0.055)/1.055,2.4),1) + 0.7152*Math.pow(rgb.g/255<=0.03928? (rgb.g/255)/12.92:Math.pow((rgb.g/255+0.055)/1.055,2.4),1) + 0.0722*Math.pow(rgb.b/255<=0.03928? (rgb.b/255)/12.92:Math.pow((rgb.b/255+0.055)/1.055,2.4),2.4)) < 0.04; } this.place(a); this.renderCircle(a,p); this.updateCount(); return true; } return false; }
     addSix(){ let c=0; for(let i=0;i<6;i++) if(this.addOne()) c++; return c; }
     addRing(){ const before=this.minFrontierRing(); let c=0; while(this.frontier.size){ const r=this.minFrontierRing(); if(r!==before) break; if(this.addOne()) c++; else break; } return c; }
     addRandomWithColor(color){ this.ensureSeed(); const a=this.randomCandidateInside(); if(!a) return false; const k=this.key(a); this.frontier.delete(k); const p=this.axialToPoint(a); this.place(a,color); this.renderCircle(a,p); this.updateCount(); return true; }
@@ -49,15 +50,40 @@
     reset(){ this.placed.clear(); this.frontier.clear(); this.order.length=0; this.colorByKey.clear(); this.gCircles.replaceChildren(); this.place({u:0,v:0}); const p0=this.axialToPoint({u:0,v:0}); this.renderCircle({u:0,v:0}, p0); this.updateCount(); }
     getSvgBackgroundRgb(){ const cs=getComputedStyle(this.svg); const bg=cs.backgroundColor||'#10131a'; return parseCssColorToRgb(bg)||{r:16,g:19,b:26}; }
     renderAll(){ this.gCircles.replaceChildren(); for(const a of this.order){ const p=this.axialToPoint(a); if(this.withinArea(p)) this.renderCircle(a,p); } }
-    renderCircle(a,p){ const c=document.createElementNS('http://www.w3.org/2000/svg','circle'); c.setAttribute('class','node'); c.setAttribute('cx', String(p.x)); c.setAttribute('cy', String(p.y)); c.setAttribute('r', String(this.radius)); c.setAttribute('data-key', `${a.u},${a.v}`); const fill=this.colorByKey.get(`${a.u},${a.v}`); if(fill) c.style.fill = fill; const bgRgb=this.getSvgBackgroundRgb(); const fillRgb=parseCssColorToRgb(fill || getComputedStyle(c).fill || '#60a5fa'); const ratio=contrastRatio(fillRgb, bgRgb); if(ratio<2.0){ c.setAttribute("stroke","#ffffff"); c.setAttribute("stroke-width", String(Math.max(3, Math.round(this.radius*0.3)))); c.setAttribute("stroke-opacity","0.95"); c.setAttribute("shape-rendering","geometricPrecision"); }
-else if(ratio<3.0){ c.setAttribute("stroke","#ffffff"); c.setAttribute("stroke-width", String(Math.max(2, Math.round(this.radius*0.18)))); c.setAttribute("stroke-opacity","0.9"); c.setAttribute("shape-rendering","geometricPrecision"); }
-else { c.removeAttribute("stroke"); c.removeAttribute("stroke-width"); c.removeAttribute("stroke-opacity"); } this.gCircles.appendChild(c); }
+    renderCircle(a,p){ const c=document.createElementNS('http://www.w3.org/2000/svg','circle'); c.setAttribute('class','node'); c.setAttribute('cx', String(p.x)); c.setAttribute('cy', String(p.y)); c.setAttribute('r', String(this.radius)); c.setAttribute('data-key', `${a.u},${a.v}`); const fill=this.colorByKey.get(`${a.u},${a.v}`); if(fill) c.style.fill = fill; const bgRgb=this.getSvgBackgroundRgb(); const fillRgb=parseCssColorToRgb(fill || getComputedStyle(c).fill || '#60a5fa'); const ratio=contrastRatio(fillRgb, bgRgb);
+if(typeof isVeryDark === "function" && isVeryDark(fillRgb)){
+  const haloOuter=document.createElementNS('http://www.w3.org/2000/svg','circle');
+  haloOuter.setAttribute('cx', String(p.x));
+  haloOuter.setAttribute('cy', String(p.y));
+  haloOuter.setAttribute('r', String(this.radius));
+  haloOuter.setAttribute('fill','none');
+  haloOuter.setAttribute('stroke','#cbd5e1');
+  haloOuter.setAttribute('stroke-width', String(Math.max(4, Math.round(this.radius*0.42))));
+  haloOuter.setAttribute('stroke-linejoin','round');
+  haloOuter.setAttribute('stroke-linecap','round');
+  const haloInner=document.createElementNS('http://www.w3.org/2000/svg','circle');
+  haloInner.setAttribute('cx', String(p.x));
+  haloInner.setAttribute('cy', String(p.y));
+  haloInner.setAttribute('r', String(this.radius));
+  haloInner.setAttribute('fill','none');
+  haloInner.setAttribute('stroke','#ffffff');
+  haloInner.setAttribute('stroke-width', String(Math.max(3, Math.round(this.radius*0.28))));
+  haloInner.setAttribute('stroke-linejoin','round');
+  haloInner.setAttribute('stroke-linecap','round');
+  this.gCircles.appendChild(haloOuter);
+  this.gCircles.appendChild(haloInner);
+  this.gCircles.appendChild(c);
+}
+else if(ratio<2.0){ c.setAttribute('stroke','#ffffff'); c.setAttribute('stroke-width', String(Math.max(3, Math.round(this.radius*0.3)))); c.setAttribute('stroke-opacity','0.95'); c.setAttribute('shape-rendering','geometricPrecision'); this.gCircles.appendChild(c); }
+else if(ratio<3.0){ c.setAttribute('stroke','#ffffff'); c.setAttribute('stroke-width', String(Math.max(2, Math.round(this.radius*0.18)))); c.setAttribute('stroke-opacity','0.9'); c.setAttribute('shape-rendering','geometricPrecision'); this.gCircles.appendChild(c); }
+else { c.removeAttribute('stroke'); c.removeAttribute('stroke-width'); c.removeAttribute('stroke-opacity'); this.gCircles.appendChild(c); } }
     updateCount(){ this.countLabel.textContent=String(this.order.length); }
   }
 
   function main(){ const host=document.getElementById('svgHost'); if(!host) return; const model=new Honeycomb(host); const palette=new PaletteManager(); document.getElementById('btnAddOne').onclick=()=>model.addOne(); document.getElementById('btnAddSix').onclick=()=>model.addSix(); document.getElementById('btnAddRing').onclick=()=>model.addRing(); document.getElementById('btnReset').onclick=()=>model.reset(); document.getElementById('btnAddRandomColor').onclick=()=>{ const sel=palette.selected; if(!sel) return; model.addRandomWithColor(sel.value); }; document.getElementById('btnAddRandomAny').onclick=()=>{ const all=palette.colors; if(!all.length) return; const pick=all[Math.floor(Math.random()*all.length)].value; model.addRandomWithColor(pick); } }
   document.addEventListener('DOMContentLoaded', main);
 })();
+
 
 
 

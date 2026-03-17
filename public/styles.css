@@ -25,3 +25,8 @@ circle.node{fill:var(--circle);stroke:var(--circle-edge);stroke-width:1}.palette
 .palette-row input[type="text"]{width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:#1a1f2a;color:var(--text)}
 .palette-row button{padding:6px 8px}
 
+.runner{margin-top:16px;border-top:1px solid var(--border);padding-top:12px}
+.runner-controls{display:grid;grid-template-columns:repeat(5,auto);gap:8px;align-items:center}
+.runner-controls button{font-size:14px;padding:6px 10px}
+.runner-controls .speed{color:#cfd3dc;opacity:0.9}
+/* runner style already added */

@@ -52,8 +52,32 @@
     </main>
   </div>
   <script src="app.js"></script>
+
+  <script>
+  (function(){
+    var runner = { timer:null, interval:200, label:null,
+      update:function(){ if(this.label){ this.label.textContent=((1000/this.interval).toFixed(1))+'×/s'; } },
+      start:function(){ if(this.timer) return; var self=this; this.timer = setInterval(function(){ var btn=document.getElementById('btnAddRandomAny'); if(btn) btn.click(); }, this.interval); },
+      stop:function(){ if(this.timer){ clearInterval(this.timer); this.timer=null; } },
+      faster:function(){ this.interval=Math.max(40, Math.round(this.interval*0.7)); var active=!!this.timer; this.stop(); this.update(); if(active) this.start(); },
+      slower:function(){ this.interval=Math.min(5000, Math.round(this.interval/0.7)); var active=!!this.timer; this.stop(); this.update(); if(active) this.start(); }
+    };
+    document.addEventListener('DOMContentLoaded', function(){
+      runner.label = document.getElementById('speedLabel'); if(runner.label) runner.update();
+      var play=document.getElementById('btnPlay'); var pause=document.getElementById('btnPause');
+      var up=document.getElementById('btnSpeedUp'); var down=document.getElementById('btnSpeedDown');
+      if(play) play.onclick=function(){ runner.start(); };
+      if(pause) pause.onclick=function(){ runner.stop(); };
+      if(up) up.onclick=function(){ runner.faster(); };
+      if(down) down.onclick=function(){ runner.slower(); };
+    });
+  })();
+  </script>
 </body>
 </html>
+
+
+
 
 
 

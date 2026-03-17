@@ -90,9 +90,13 @@ function isVeryDark(rgb: RGB): boolean { return relLuminance(rgb) < 0.04; }
 
   get colors(): ColorEntry[] { return this.data.slice(); }
 
-  private load() {
+    private load() {
+    const raw = localStorage.getItem(LS_PALETTE_KEY);
+    if (raw === null) {
+      this.resetDefaults(true);
+      return;
+    }
     try {
-      const raw = localStorage.getItem(LS_PALETTE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as ColorEntry[];
         if (Array.isArray(parsed) && parsed.length) {
@@ -100,6 +104,10 @@ function isVeryDark(rgb: RGB): boolean { return relLuminance(rgb) < 0.04; }
           return;
         }
       }
+    } catch {}
+    // Fallback to defaults but do NOT overwrite user's stored value
+    this.resetDefaults(false);
+  }      }
     } catch {}
     this.resetDefaults();
   }
@@ -109,7 +117,7 @@ function isVeryDark(rgb: RGB): boolean { return relLuminance(rgb) < 0.04; }
     this.renderSelect();
   }
 
-  private resetDefaults() {
+  private resetDefaults(persist = true) {
     this.data = [
       { id: 'c1', name: 'Czerwony', value: '#ff2d2d' },
       { id: 'c2', name: 'Sky', value: '#60a5fa' },
@@ -123,22 +131,19 @@ function isVeryDark(rgb: RGB): boolean { return relLuminance(rgb) < 0.04; }
       { id: 'c10', name: 'Yellow', value: '#f59e0b' },
       { id: 'c11', name: 'Orange', value: '#f97316' },
     ];
-    this.renderList();
-    this.save();
+    this.renderList();\n    if (persist) { this.save(); } else { this.renderSelect(); }
   }
 
   private addColor() {
     const n = this.data.length + 1;
     const entry: ColorEntry = { id: 'c' + Date.now(), name: `Color ${n}`, value: '#888888' };
     this.data.push(entry);
-    this.renderList();
-    this.save();
+    this.renderList();\n    if (persist) { this.save(); } else { this.renderSelect(); }
   }
 
   private deleteColor(id: string) {
     this.data = this.data.filter(x => x.id !== id);
-    this.renderList();
-    this.save();
+    this.renderList();\n    if (persist) { this.save(); } else { this.renderSelect(); }
   }
 
   private updateColor(id: string, patch: Partial<ColorEntry>) {
@@ -514,6 +519,7 @@ function main() {
 }
 
 document.addEventListener('DOMContentLoaded', main);
+
 
 
 

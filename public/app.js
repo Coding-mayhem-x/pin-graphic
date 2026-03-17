@@ -8,9 +8,14 @@
   class PaletteManager{
     constructor(){ this.listEl=document.getElementById('paletteList'); this.selectEl=document.getElementById('paletteSelect'); this.addBtn=document.getElementById('btnPaletteAdd'); this.resetBtn=document.getElementById('btnPaletteReset'); this.addBtn.onclick=()=>this.addColor(); this.resetBtn.onclick=()=>this.resetDefaults(); this.load(); this.renderList(); this.renderSelect(); }
     get selected(){ const id=this.selectEl.value; return this.data.find(x=>x.id===id);} get colors(){return this.data.slice();}
-    load(){ try{ const raw=localStorage.getItem(LS_PALETTE_KEY); if(raw){ const parsed=JSON.parse(raw); if(Array.isArray(parsed) && parsed.length){ this.data=parsed; return; } } }catch{} this.resetDefaults(); }
+    load(){ const raw=localStorage.getItem(LS_PALETTE_KEY);
+  if(raw===null){ this.resetDefaults(true); return; }
+  try{ if(raw){ const parsed=JSON.parse(raw); if(Array.isArray(parsed) && parsed.length){ this.data=parsed; return; } } }catch{}
+  // fallback but do not overwrite storage
+  this.resetDefaults && this.resetDefaults(false);
+} } }catch{} this.resetDefaults(); }
     save(){ localStorage.setItem(LS_PALETTE_KEY, JSON.stringify(this.data)); this.renderSelect(); }
-    resetDefaults(){ this.data=[
+    resetDefaults(persist=true){ this.data=[
 {id:"c1",name:"Czerwony",value:"#ff2d2d"},
 {id:"c2",name:"Sky",value:"#60a5fa"},
 {id:"c3",name:"Dark Blue",value:"#1e3a8a"},
@@ -22,7 +27,7 @@
 {id:"c9",name:"Dark Green",value:"#14532d"},
 {id:"c10",name:"Yellow",value:"#f59e0b"},
 {id:"c11",name:"Orange",value:"#f97316"}
-]; this.renderList(); this.save(); }
+]; this.renderList(); if(persist){ this.save(); } else { this.renderSelect(); } }
     addColor(){ const n=this.data.length+1; const entry={id:'c'+Date.now(),name:`Color ${n}`,value:'#888888'}; this.data.push(entry); this.renderList(); this.save(); }
     deleteColor(id){ this.data=this.data.filter(x=>x.id!==id); this.renderList(); this.save(); }
     updateColor(id,patch){ const e=this.data.find(x=>x.id===id); if(!e) return; Object.assign(e,patch); this.save(); }
@@ -83,6 +88,7 @@ else { c.removeAttribute('stroke'); c.removeAttribute('stroke-width'); c.removeA
   function main(){ const host=document.getElementById('svgHost'); if(!host) return; const model=new Honeycomb(host); const palette=new PaletteManager(); document.getElementById('btnAddOne').onclick=()=>model.addOne(); document.getElementById('btnAddSix').onclick=()=>model.addSix(); document.getElementById('btnAddRing').onclick=()=>model.addRing(); document.getElementById('btnReset').onclick=()=>model.reset(); document.getElementById('btnAddRandomColor').onclick=()=>{ const sel=palette.selected; if(!sel) return; model.addRandomWithColor(sel.value); }; document.getElementById('btnAddRandomAny').onclick=()=>{ const all=palette.colors; if(!all.length) return; const pick=all[Math.floor(Math.random()*all.length)].value; model.addRandomWithColor(pick); } }
   document.addEventListener('DOMContentLoaded', main);
 })();
+
 
 
 

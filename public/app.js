@@ -836,4 +836,41 @@ function main() {
             }
         };
     document.addEventListener('DOMContentLoaded', main);
+    function nearestTwoFromPalette(rgb, palette) {
+        let bestA = '#000000', bestB = '#000000';
+        let da = Infinity, db = Infinity;
+        for (const e of palette) {
+            const pr = parseCssColorToRgb(e.value) || { r: 0, g: 0, b: 0 };
+            const d = rgbDist2(rgb, pr);
+            if (d < da) {
+                db = da;
+                bestB = bestA;
+                da = d;
+                bestA = e.value;
+            }
+            else if (d < db) {
+                db = d;
+                bestB = e.value;
+            }
+        }
+        if (bestB === bestA && palette.length > 1) {
+            const alt = palette.find(x => x.value !== bestA);
+            if (alt) {
+                bestB = alt.value;
+                db = rgbDist2(rgb, parseCssColorToRgb(bestB));
+            }
+        }
+        return { a: bestA, b: bestB, da, db };
+    }
+    const BAYER8 = [
+        0, 48, 12, 60, 3, 51, 15, 63,
+        32, 16, 44, 28, 35, 19, 47, 31,
+        8, 56, 4, 52, 11, 59, 7, 55,
+        40, 24, 36, 20, 43, 27, 39, 23,
+        2, 50, 14, 62, 1, 49, 13, 61,
+        34, 18, 46, 30, 33, 17, 45, 29,
+        10, 58, 6, 54, 9, 57, 5, 53,
+        42, 26, 38, 22, 41, 25, 37, 21
+    ].map(v => v / 64);
+    function bayer8(u, v) { const i = ((u % 8) + 8) % 8, j = ((v % 8) + 8) % 8; return BAYER8[j * 8 + i]; }
 }

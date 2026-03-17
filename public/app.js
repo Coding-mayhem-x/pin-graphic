@@ -835,42 +835,69 @@ function main() {
                 o.renderAll();
             }
         };
-    document.addEventListener('DOMContentLoaded', main);
-    function nearestTwoFromPalette(rgb, palette) {
-        let bestA = '#000000', bestB = '#000000';
-        let da = Infinity, db = Infinity;
-        for (const e of palette) {
-            const pr = parseCssColorToRgb(e.value) || { r: 0, g: 0, b: 0 };
-            const d = rgbDist2(rgb, pr);
-            if (d < da) {
-                db = da;
-                bestB = bestA;
-                da = d;
-                bestA = e.value;
-            }
-            else if (d < db) {
-                db = d;
-                bestB = e.value;
-            }
-        }
-        if (bestB === bestA && palette.length > 1) {
-            const alt = palette.find(x => x.value !== bestA);
-            if (alt) {
-                bestB = alt.value;
-                db = rgbDist2(rgb, parseCssColorToRgb(bestB));
-            }
-        }
-        return { a: bestA, b: bestB, da, db };
-    }
-    const BAYER8 = [
-        0, 48, 12, 60, 3, 51, 15, 63,
-        32, 16, 44, 28, 35, 19, 47, 31,
-        8, 56, 4, 52, 11, 59, 7, 55,
-        40, 24, 36, 20, 43, 27, 39, 23,
-        2, 50, 14, 62, 1, 49, 13, 61,
-        34, 18, 46, 30, 33, 17, 45, 29,
-        10, 58, 6, 54, 9, 57, 5, 53,
-        42, 26, 38, 22, 41, 25, 37, 21
-    ].map(v => v / 64);
-    function bayer8(u, v) { const i = ((u % 8) + 8) % 8, j = ((v % 8) + 8) % 8; return BAYER8[j * 8 + i]; }
 }
+document.addEventListener('DOMContentLoaded', main);
+function nearestTwoFromPalette(rgb, palette) {
+    let bestA = '#000000', bestB = '#000000';
+    let da = Infinity, db = Infinity;
+    for (const e of palette) {
+        const pr = parseCssColorToRgb(e.value) || { r: 0, g: 0, b: 0 };
+        const d = rgbDist2(rgb, pr);
+        if (d < da) {
+            db = da;
+            bestB = bestA;
+            da = d;
+            bestA = e.value;
+        }
+        else if (d < db) {
+            db = d;
+            bestB = e.value;
+        }
+    }
+    if (bestB === bestA && palette.length > 1) {
+        const alt = palette.find(x => x.value !== bestA);
+        if (alt) {
+            bestB = alt.value;
+            db = rgbDist2(rgb, parseCssColorToRgb(bestB));
+        }
+    }
+    return { a: bestA, b: bestB, da, db };
+}
+const BAYER8 = [
+    0, 48, 12, 60, 3, 51, 15, 63,
+    32, 16, 44, 28, 35, 19, 47, 31,
+    8, 56, 4, 52, 11, 59, 7, 55,
+    40, 24, 36, 20, 43, 27, 39, 23,
+    2, 50, 14, 62, 1, 49, 13, 61,
+    34, 18, 46, 30, 33, 17, 45, 29,
+    10, 58, 6, 54, 9, 57, 5, 53,
+    42, 26, 38, 22, 41, 25, 37, 21
+].map(v => v / 64);
+function bayer8(u, v) { const i = ((u % 8) + 8) % 8, j = ((v % 8) + 8) % 8; return BAYER8[j * 8 + i]; }
+// ImageSampler + color distance helpers
+class ImageSampler {
+    constructor() {
+        this.w = 0;
+        this.h = 0;
+        this.data = null;
+        this.canvas = document.createElement('canvas');
+        const c = this.canvas.getContext('2d');
+        if (!c)
+            throw new Error('2d');
+        this.ctx = c;
+    }
+    async loadFile(file) { const url = await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result)); fr.onerror = () => rej(fr.error); fr.readAsDataURL(file); }); const img = await new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = e => rej(e); im.src = url; }); this.w = img.naturalWidth || img.width; this.h = img.naturalHeight || img.height; this.canvas.width = this.w; this.canvas.height = this.h; this.ctx.drawImage(img, 0, 0); this.data = this.ctx.getImageData(0, 0, this.w, this.h); }
+    isReady() { return !!this.data; }
+    sampleAt(p, areaW, areaH, fit) { if (!this.data)
+        return null; const imgW = this.w, imgH = this.h; let sx = areaW / imgW, sy = areaH / imgH; if (fit === 'cover') {
+        const s = Math.max(sx, sy);
+        sx = sy = s;
+    }
+    else if (fit === 'contain') {
+        const s = Math.min(sx, sy);
+        sx = sy = s;
+    } const offX = (areaW - imgW * sx) / 2, offY = (areaH - imgH * sy) / 2; const ax = p.x + areaW / 2, ay = p.y + areaH / 2; const ix = (ax - offX) / sx, iy = (ay - offY) / sy; const x = Math.floor(ix), y = Math.floor(iy); if (x < 0 || y < 0 || x >= imgW || y >= imgH)
+        return null; const i = (y * imgW + x) * 4, d = this.data.data; return { r: d[i], g: d[i + 1], b: d[i + 2] }; }
+}
+function srgbToLinear(v) { v /= 255; return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }
+function rgbDist2(a, b) { const ar = srgbToLinear(a.r), ag = srgbToLinear(a.g), ab = srgbToLinear(a.b); const br = srgbToLinear(b.r), bg = srgbToLinear(b.g), bb = srgbToLinear(b.b); const dr = ar - br, dg = ag - bg, db = ab - bb; return dr * dr + dg * dg + db * db; }

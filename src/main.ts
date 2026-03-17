@@ -383,7 +383,7 @@ class Honeycomb {
     else { c.removeAttribute('stroke'); c.removeAttribute('stroke-width'); c.removeAttribute('stroke-opacity'); this.gCircles.appendChild(c); }
   }
 
-  applyHalftoneFromSampler(s: ImageSampler, fit: 'cover'|'contain'|'fill'){
+  applyHalftoneFromSampler(s: any, fit: 'cover'|'contain'|'fill'){
     this.sizeFactorByKey.clear();
     for (const a of this.order){ const p=this.axialToPoint(a); const rgb = s.sampleAt(p, this.areaW, this.areaH, fit) || {r:16,g:19,b:26}; const L = relLuminance(rgb); const f = Math.max(0.35, Math.min(1.0, 1.0 - L)); this.sizeFactorByKey.set(this.key(a), f); }
     this.renderAll();
@@ -427,6 +427,7 @@ function main() {
     
   };
 
+}
 document.addEventListener('DOMContentLoaded', main);
 function nearestTwoFromPalette(rgb: RGB, palette: ColorEntry[]): {a:string,b:string, da:number, db:number} {
   let bestA = '#000000', bestB = '#000000'; let da = Infinity, db = Infinity;
@@ -445,3 +446,15 @@ const BAYER8 = [
   42,26,38,22,41,25,37,21
 ].map(v=>v/64);
 function bayer8(u:number,v:number): number { const i=((u%8)+8)%8, j=((v%8)+8)%8; return BAYER8[j*8+i]; }
+
+
+// ImageSampler + color distance helpers
+class ImageSampler {
+  private canvas: HTMLCanvasElement; private ctx: CanvasRenderingContext2D; private w=0; private h=0; private data: ImageData|null=null;
+  constructor(){ this.canvas=document.createElement('canvas'); const c=this.canvas.getContext('2d'); if(!c) throw new Error('2d'); this.ctx=c as CanvasRenderingContext2D; }
+  async loadFile(file: File){ const url=await new Promise<string>((res,rej)=>{ const fr=new FileReader(); fr.onload=()=>res(String(fr.result)); fr.onerror=()=>rej(fr.error); fr.readAsDataURL(file);}); const img=await new Promise<HTMLImageElement>((res,rej)=>{ const im=new Image(); im.onload=()=>res(im); im.onerror=e=>rej(e); im.src=url;}); this.w=(img as any).naturalWidth||img.width; this.h=(img as any).naturalHeight||img.height; this.canvas.width=this.w; this.canvas.height=this.h; this.ctx.drawImage(img,0,0); this.data=this.ctx.getImageData(0,0,this.w,this.h); }
+  isReady(){ return !!this.data; }
+  sampleAt(p: Point, areaW:number, areaH:number, fit:'cover'|'contain'|'fill'): RGB|null { if(!this.data) return null; const imgW=this.w, imgH=this.h; let sx=areaW/imgW, sy=areaH/imgH; if(fit==='cover'){ const s=Math.max(sx,sy); sx=sy=s; } else if(fit==='contain'){ const s=Math.min(sx,sy); sx=sy=s;} const offX=(areaW-imgW*sx)/2, offY=(areaH-imgH*sy)/2; const ax=p.x+areaW/2, ay=p.y+areaH/2; const ix=(ax-offX)/sx, iy=(ay-offY)/sy; const x=Math.floor(ix), y=Math.floor(iy); if(x<0||y<0||x>=imgW||y>=imgH) return null; const i=(y*imgW+x)*4, d=this.data.data; return { r:d[i], g:d[i+1], b:d[i+2] }; }
+}
+function srgbToLinear(v:number){ v/=255; return v<=0.04045? v/12.92 : Math.pow((v+0.055)/1.055,2.4); }
+function rgbDist2(a: RGB, b: RGB){ const ar=srgbToLinear(a.r), ag=srgbToLinear(a.g), ab=srgbToLinear(a.b); const br=srgbToLinear(b.r), bg=srgbToLinear(b.g), bb=srgbToLinear(b.b); const dr=ar-br, dg=ag-bg, db=ab-bb; return dr*dr+dg*dg+db*db; }

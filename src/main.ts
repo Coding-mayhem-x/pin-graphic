@@ -185,6 +185,23 @@ class Honeycomb {
 
   private angleOfPoint(p: Point): number { return Math.atan2(p.y, p.x); }
   private angleDiff(a: number, b: number): number { let d = a - b; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return Math.abs(d); }
+  private addAx(a: Axial, b: Axial, k = 1): Axial { return { u: a.u + b.u * k, v: a.v + b.v * k }; }
+
+  private findNearestFree(target: Axial, maxRing: number = 60): Axial | undefined {
+    const k0 = this.key(target); const p0 = this.axialToPoint(target);
+    if (!this.placed.has(k0) && this.withinArea(p0)) return target;
+    for (let r = 1; r <= maxRing; r++) {
+      let q: Axial = this.addAx(target, this.dirs[4], r);
+      for (let side = 0; side < 6; side++) {
+        for (let step = 0; step < r; step++) {
+          const k = this.key(q); const p = this.axialToPoint(q);
+          if (!this.placed.has(k) && this.withinArea(p)) return q;
+          const dir = this.dirs[side]; q = this.addAx(q, dir, 1);
+        }
+      }
+    }
+    return undefined;
+  }
 
   private directionOrder(a: Axial): number { const p = this.axialToPoint(a); const ang = Math.atan2(p.y, p.x); const rot = ang - Math.PI / 2; let t = rot; while (t < 0) t += Math.PI * 2; return Math.floor((t + Math.PI / 6) / (Math.PI / 3)) % 6; }
 
@@ -215,18 +232,27 @@ class Honeycomb {
     const existing: Axial[] = []; for (const a of this.order) { if (this.colorByKey.get(this.key(a)) === color) existing.push(a); }
     if (existing.length) {
       const inSector = existing.filter((a) => this.angleDiff(this.angleOfPoint(this.axialToPoint(a)), center) <= half);
-      const pool = inSector.length ? inSector : existing; const base = pool[Math.floor(Math.random() * pool.length)];
-      const candidates: Axial[] = []; for (const d of this.dirs) candidates.push({ u: base.u + d.u, v: base.v + d.v });
-      candidates.sort((a, b) => this.angleDiff(this.angleOfPoint(this.axialToPoint(a)), center) - this.angleDiff(this.angleOfPoint(this.axialToPoint(b)), center));
-      for (const n of candidates) { const k = this.key(n); const p = this.axialToPoint(n); if (!this.placed.has(k) && this.withinArea(p)) { this.place(n, color); this.renderCircle(n, p); this.updateCount(); return true; } }
+      const pool = inSector.length ? inSector : existing;
+      const order = pool.slice().sort((a, b) => this.angleDiff(this.angleOfPoint(this.axialToPoint(a)), center) - this.angleDiff(this.angleOfPoint(this.axialToPoint(b)), center));
+      for (const base of order) {
+        const candidates: Axial[] = []; for (const d of this.dirs) candidates.push({ u: base.u + d.u, v: base.v + d.v });
+        candidates.sort((a, b) => this.angleDiff(this.angleOfPoint(this.axialToPoint(a)), center) - this.angleDiff(this.angleOfPoint(this.axialToPoint(b)), center));
+        for (const n of candidates) { const p = this.axialToPoint(n); if (!this.placed.has(this.key(n)) && this.withinArea(p)) { this.place(n, color); this.renderCircle(n, p); this.updateCount(); return true; } }
+      }
     }
     for (let i = 0; i < maxTries; i++) {
       const x = Math.random() * (this.areaW - 2 * this.radius) + (-this.areaW / 2 + this.radius);
       const y = Math.random() * (this.areaH - 2 * this.radius) + (-this.areaH / 2 + this.radius);
-      const p: Point = { x, y }; if (this.angleDiff(this.angleOfPoint(p), center) > half) continue; const a = this.pointToAxialRound(p); const k = this.key(a); const pc = this.axialToPoint(a);
-      if (!this.placed.has(k) && this.withinArea(pc)) { this.place(a, color); this.renderCircle(a, pc); this.updateCount(); return true; }
+      const p: Point = { x, y }; if (this.angleDiff(this.angleOfPoint(p), center) > half) continue;
+      const a = this.pointToAxialRound(p); const b = this.findNearestFree(a, 40); if (b) { const pb = this.axialToPoint(b); this.place(b, color); this.renderCircle(b, pb); this.updateCount(); return true; }
     }
-    return this.addRandomWithColor(color);
+    // final fallback: random anywhere in area
+    for (let i = 0; i < 500; i++) {
+      const x = Math.random() * (this.areaW - 2 * this.radius) + (-this.areaW / 2 + this.radius);
+      const y = Math.random() * (this.areaH - 2 * this.radius) + (-this.areaH / 2 + this.radius);
+      const a = this.pointToAxialRound({ x, y }); const b = this.findNearestFree(a, 60); if (b) { const pb = this.axialToPoint(b); this.place(b, color); this.renderCircle(b, pb); this.updateCount(); return true; }
+    }
+    return false;
   }
 
   private minFrontierRing(): number { let best = Infinity; for (const k of this.frontier) { const [u, v] = k.split(',').map(Number); const r = this.ring({ u, v }); if (r < best) best = r; } return best; }

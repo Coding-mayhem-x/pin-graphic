@@ -394,7 +394,7 @@ function main() {
   (document.getElementById('btnAddRandomColor') as HTMLButtonElement).onclick = () => {
     const strat = (document.getElementById('strategySelect') as HTMLSelectElement)?.value || 'frontier';
     if (strat === 'clock') { const all = palette.colors; if (!all.length) return; const pick = all[Math.floor(Math.random() * all.length)].value; model.addClockWithColor(pick); }
-    else if (strat === 'clock2') {  } else if (strat === 'clock3') { const all = palette.colors; if (!all.length) return; const pick = all[Math.floor(Math.random()*all.length)].value; model.addClockV3WithColor(pick); }
+    else if (strat === 'clock2') { const all = palette.colors; if (!all.length) return; const pick = all[Math.floor(Math.random() * all.length)].value; model.addClockV2WithColor(pick); } else if (strat === 'clock3') { const all = palette.colors; if (!all.length) return; const pick = all[Math.floor(Math.random()*all.length)].value; model.addClockV3WithColor(pick); }
     else { const sel = palette.selected; if (!sel) return; model.addRandomWithColor(sel.value); }
   };
   (document.getElementById('btnAddRandomAny') as HTMLButtonElement).onclick = () => { const all = palette.colors; if (!all.length) return; const pick = all[Math.floor(Math.random() * all.length)].value; const strat = (document.getElementById('strategySelect') as HTMLSelectElement)?.value || 'frontier'; if (strat === 'clock') model.addClockWithColor(pick); else if (strat === 'clock2') model.addClockV2WithColor(pick); else if (strat === 'clock3') model.addClockV3WithColor(pick); else model.addRandomWithColor(pick); };
@@ -434,6 +434,8 @@ class ImageSampler {
 }
 function srgbToLinear(v:number): number { v/=255; return v<=0.04045? v/12.92 : Math.pow((v+0.055)/1.055,2.4); }
 function rgbDist2(a: RGB, b: RGB): number { const ar=srgbToLinear(a.r), ag=srgbToLinear(a.g), ab=srgbToLinear(a.b); const br=srgbToLinear(b.r), bg=srgbToLinear(b.g), bb=srgbToLinear(b.b); const dr=ar-br, dg=ag-bg, db=ab-bb; return dr*dr+dg*dg+db*db; }
+
+
 
 
 

@@ -729,7 +729,13 @@ function main() {
             const pick = all[Math.floor(Math.random() * all.length)].value;
             model.addClockWithColor(pick);
         }
-        else if (strat === 'clock2') { }
+        else if (strat === 'clock2') {
+            const all = palette.colors;
+            if (!all.length)
+                return;
+            const pick = all[Math.floor(Math.random() * all.length)].value;
+            model.addClockV2WithColor(pick);
+        }
         else if (strat === 'clock3') {
             const all = palette.colors;
             if (!all.length)

@@ -604,6 +604,26 @@ class Honeycomb {
         }
         return this.placeAsNewInWedge(color, center);
     }
+    addAnywhereWithColor(color) {
+        this.ensureSeed();
+        const attempts = 300;
+        for (let i = 0; i < attempts; i++) {
+            const x = Math.random() * (this.areaW - 2 * this.radius) + (-this.areaW / 2 + this.radius);
+            const y = Math.random() * (this.areaH - 2 * this.radius) + (-this.areaH / 2 + this.radius);
+            const a = this.pointToAxialRound({ x, y });
+            const b = this.findNearestFree(a, 60);
+            if (b) {
+                const p = this.axialToPoint(b);
+                if (this.withinArea(p)) {
+                    this.place(b, color);
+                    this.renderCircle(b, p);
+                    this.updateCount();
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
     minFrontierRing() { let best = Infinity; for (const k of this.frontier) {
         const [u, v] = k.split(',').map(Number);
         const r = this.ring({ u, v });
@@ -688,6 +708,18 @@ function main() {
     document.getElementById('btnAddSix').onclick = () => model.addSix();
     document.getElementById('btnAddRing').onclick = () => model.addRing();
     document.getElementById('btnReset').onclick = () => model.reset();
+    document.getElementById('btnAddRng').onclick = () => { const cols = (new PaletteManager()).colors.map(c => c.value); if (!cols.length)
+        return; const total = Math.ceil(cols.length * 1.7); const picks = []; for (const c of cols)
+        picks.push(c); while (picks.length < total) {
+        picks.push(cols[Math.floor(Math.random() * cols.length)]);
+    } for (let i = picks.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const t = picks[i];
+        picks[i] = picks[j];
+        picks[j] = t;
+    } for (const c of picks) {
+        model.addAnywhereWithColor(c) || model.addRandomWithColor(c);
+    } };
     document.getElementById('btnAddRandomColor').onclick = () => {
         var _a;
         const strat = ((_a = document.getElementById('strategySelect')) === null || _a === void 0 ? void 0 : _a.value) || 'frontier';

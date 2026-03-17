@@ -352,6 +352,18 @@ class Honeycomb {
     return this.placeAsNewInWedge(color, center);
   }
 
+  addAnywhereWithColor(color: string): boolean {
+    this.ensureSeed();
+    const attempts = 300;
+    for (let i=0;i<attempts;i++){
+      const x = Math.random() * (this.areaW - 2 * this.radius) + (-this.areaW / 2 + this.radius);
+      const y = Math.random() * (this.areaH - 2 * this.radius) + (-this.areaH / 2 + this.radius);
+      const a = this.pointToAxialRound({x,y});
+      const b = this.findNearestFree(a, 60);
+      if (b){ const p=this.axialToPoint(b); if(this.withinArea(p)){ this.place(b,color); this.renderCircle(b,p); this.updateCount(); return true; } }
+    }
+    return false;
+  }
   private minFrontierRing(): number { let best=Infinity; for(const k of this.frontier){ const [u,v]=k.split(',').map(Number); const r=this.ring({u,v}); if(r<best) best=r; } return best; }
 
   reset() { this.placed.clear(); this.frontier.clear(); this.order.length = 0; this.colorByKey.clear(); this.gCircles.replaceChildren(); this.place({ u: 0, v: 0 }); const p0 = this.axialToPoint({ u: 0, v: 0 }); this.renderCircle({ u: 0, v: 0 }, p0); this.updateCount(); }
@@ -382,6 +394,7 @@ function main() {
   (document.getElementById('btnAddSix') as HTMLButtonElement).onclick = () => model.addSix();
   (document.getElementById('btnAddRing') as HTMLButtonElement).onclick = () => model.addRing();
   (document.getElementById('btnReset') as HTMLButtonElement).onclick = () => model.reset();
+  (document.getElementById('btnAddRng') as HTMLButtonElement).onclick = () => { const cols = (new PaletteManager()).colors.map(c=>c.value); if(!cols.length) return; const total = Math.ceil(cols.length * 1.7); const picks: string[] = []; for(const c of cols) picks.push(c); while(picks.length < total){ picks.push(cols[Math.floor(Math.random()*cols.length)]); } for(let i=picks.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); const t=picks[i]; picks[i]=picks[j]; picks[j]=t; } for(const c of picks){ model.addAnywhereWithColor(c) || model.addRandomWithColor(c); } };
   (document.getElementById('btnAddRandomColor') as HTMLButtonElement).onclick = () => {
     const strat = (document.getElementById('strategySelect') as HTMLSelectElement)?.value || 'frontier';
     if (strat === 'clock') { const all = palette.colors; if (!all.length) return; const pick = all[Math.floor(Math.random() * all.length)].value; model.addClockWithColor(pick); }
@@ -393,6 +406,7 @@ function main() {
 }
 
 document.addEventListener('DOMContentLoaded', main);
+
 
 
 

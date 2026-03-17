@@ -425,3 +425,6 @@ function main() {
       const o:any = model; const order:any[] = o.order || [];
       for (const a of order){ const p=o.axialToPoint(a); const rgb = imgSampler.sampleAt(p, o.areaW, o.areaH, fit) || {r:16,g:19,b:26}; let best=pal[0]?.value||'#000'; let bestD=Infinity; for(const e of pal){ const pr=parseCssColorToRgb(e.value)||{r:0,g:0,b:0}; const d=rgbDist2(rgb,pr); if(d<bestD){bestD=d; best=e.value;} } o.colorByKey.set(o.key(a), best); } o.renderAll(); }
     
+  };
+
+document.addEventListener('DOMContentLoaded', main);

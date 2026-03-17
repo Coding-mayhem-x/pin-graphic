@@ -835,4 +835,5 @@ function main() {
                 o.renderAll();
             }
         };
+    document.addEventListener('DOMContentLoaded', main);
 }

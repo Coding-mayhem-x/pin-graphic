@@ -74,14 +74,12 @@ class PaletteManager {
     this.resetBtn = document.getElementById('btnPaletteReset') as HTMLButtonElement;
 
     this.addBtn.onclick = () => this.addColor();
-    this.resetBtn.onclick = () => this.resetDefaults();
+    this.resetBtn.onclick = () => this.resetDefaults(true);
 
     this.load();
     this.renderList();
     this.renderSelect();
   }
-
-function isVeryDark(rgb: RGB): boolean { return relLuminance(rgb) < 0.04; }
 
   get selected(): ColorEntry | undefined {
     const id = this.selectEl.value;
@@ -90,7 +88,7 @@ function isVeryDark(rgb: RGB): boolean { return relLuminance(rgb) < 0.04; }
 
   get colors(): ColorEntry[] { return this.data.slice(); }
 
-    private load() {
+  private load() {
     const raw = localStorage.getItem(LS_PALETTE_KEY);
     if (raw === null) {
       this.resetDefaults(true);
@@ -104,12 +102,10 @@ function isVeryDark(rgb: RGB): boolean { return relLuminance(rgb) < 0.04; }
           return;
         }
       }
-    } catch {}
-    // Fallback to defaults but do NOT overwrite user's stored value
+    } catch (e) {
+      // ignore
+    }
     this.resetDefaults(false);
-  }      }
-    } catch {}
-    this.resetDefaults();
   }
 
   private save() {
@@ -131,19 +127,22 @@ function isVeryDark(rgb: RGB): boolean { return relLuminance(rgb) < 0.04; }
       { id: 'c10', name: 'Yellow', value: '#f59e0b' },
       { id: 'c11', name: 'Orange', value: '#f97316' },
     ];
-    this.renderList();\n    if (persist) { this.save(); } else { this.renderSelect(); }
+    this.renderList();
+    if (persist) { this.save(); } else { this.renderSelect(); }
   }
 
   private addColor() {
     const n = this.data.length + 1;
     const entry: ColorEntry = { id: 'c' + Date.now(), name: `Color ${n}`, value: '#888888' };
     this.data.push(entry);
-    this.renderList();\n    if (persist) { this.save(); } else { this.renderSelect(); }
+    this.renderList();
+    this.save();
   }
 
   private deleteColor(id: string) {
     this.data = this.data.filter(x => x.id !== id);
-    this.renderList();\n    if (persist) { this.save(); } else { this.renderSelect(); }
+    this.renderList();
+    this.save();
   }
 
   private updateColor(id: string, patch: Partial<ColorEntry>) {
@@ -194,9 +193,7 @@ function isVeryDark(rgb: RGB): boolean { return relLuminance(rgb) < 0.04; }
       this.selectEl.value = found.id;
     }
   }
-}
-
-class Honeycomb {
+}class Honeycomb {
   private placed: Set<string> = new Set();
   private frontier: Set<string> = new Set();
   private order: Axial[] = [];
@@ -519,6 +516,7 @@ function main() {
 }
 
 document.addEventListener('DOMContentLoaded', main);
+
 
 
 

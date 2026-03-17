@@ -5,37 +5,31 @@
   function relLuminance(rgb){ const srgb=[rgb.r,rgb.g,rgb.b].map(v=>v/255); const lin=srgb.map(c=> c<=0.03928 ? c/12.92 : Math.pow((c+0.055)/1.055,2.4)); return 0.2126*lin[0]+0.7152*lin[1]+0.0722*lin[2]; }
   function contrastRatio(a,b){ const L1=relLuminance(a), L2=relLuminance(b); const light=Math.max(L1,L2), dark=Math.min(L1,L2); return (light+0.05)/(dark+0.05); }
 
-  class PaletteManager{
-    constructor(){ this.listEl=document.getElementById('paletteList'); this.selectEl=document.getElementById('paletteSelect'); this.addBtn=document.getElementById('btnPaletteAdd'); this.resetBtn=document.getElementById('btnPaletteReset'); this.addBtn.onclick=()=>this.addColor(); this.resetBtn.onclick=()=>this.resetDefaults(); this.load(); this.renderList(); this.renderSelect(); }
-    get selected(){ const id=this.selectEl.value; return this.data.find(x=>x.id===id);} get colors(){return this.data.slice();}
-    load(){ const raw=localStorage.getItem(LS_PALETTE_KEY);
-  if(raw===null){ this.resetDefaults(true); return; }
-  try{ if(raw){ const parsed=JSON.parse(raw); if(Array.isArray(parsed) && parsed.length){ this.data=parsed; return; } } }catch{}
-  // fallback but do not overwrite storage
-  this.resetDefaults && this.resetDefaults(false);
-
+    class PaletteManager{
+    constructor(){ this.listEl=document.getElementById(''paletteList''); this.selectEl=document.getElementById(''paletteSelect''); this.addBtn=document.getElementById(''btnPaletteAdd''); this.resetBtn=document.getElementById(''btnPaletteReset''); this.addBtn.onclick=()=>this.addColor(); this.resetBtn.onclick=()=>this.resetDefaults(true); this.load(); this.renderList(); this.renderSelect(); }
+    get selected(){ const id=this.selectEl.value; return this.data.find(x=>x.id===id);} 
+    get colors(){ return this.data.slice(); }
+    load(){ const raw=localStorage.getItem(LS_PALETTE_KEY); if(raw===null){ this.resetDefaults(true); return; } try{ if(raw){ const parsed=JSON.parse(raw); if(Array.isArray(parsed) && parsed.length){ this.data=parsed; return; } } } catch(e){} this.resetDefaults(false); }
     save(){ localStorage.setItem(LS_PALETTE_KEY, JSON.stringify(this.data)); this.renderSelect(); }
     resetDefaults(persist=true){ this.data=[
-{id:"c1",name:"Czerwony",value:"#ff2d2d"},
-{id:"c2",name:"Sky",value:"#60a5fa"},
-{id:"c3",name:"Dark Blue",value:"#1e3a8a"},
-{id:"c4",name:"Black",value:"#000000"},
-{id:"c5",name:"White",value:"#ffffff"},
-{id:"c6",name:"Red",value:"#ef4444"},
-{id:"c7",name:"Brown",value:"#8b5a2b"},
-{id:"c8",name:"Grass Green",value:"#22c55e"},
-{id:"c9",name:"Dark Green",value:"#14532d"},
-{id:"c10",name:"Yellow",value:"#f59e0b"},
-{id:"c11",name:"Orange",value:"#f97316"}
-]; this.renderList(); if(persist){ this.save(); } else { this.renderSelect(); } }
+      {id:"c1",name:"Czerwony",value:"#ff2d2d"},
+      {id:"c2",name:"Sky",value:"#60a5fa"},
+      {id:"c3",name:"Dark Blue",value:"#1e3a8a"},
+      {id:"c4",name:"Black",value:"#000000"},
+      {id:"c5",name:"White",value:"#ffffff"},
+      {id:"c6",name:"Red",value:"#ef4444"},
+      {id:"c7",name:"Brown",value:"#8b5a2b"},
+      {id:"c8",name:"Grass Green",value:"#22c55e"},
+      {id:"c9",name:"Dark Green",value:"#14532d"},
+      {id:"c10",name:"Yellow",value:"#f59e0b"},
+      {id:"c11",name:"Orange",value:"#f97316"}
+    ]; this.renderList(); if(persist){ this.save(); } else { this.renderSelect(); } }
     addColor(){ const n=this.data.length+1; const entry={id:'c'+Date.now(),name:`Color ${n}`,value:'#888888'}; this.data.push(entry); this.renderList(); this.save(); }
     deleteColor(id){ this.data=this.data.filter(x=>x.id!==id); this.renderList(); this.save(); }
     updateColor(id,patch){ const e=this.data.find(x=>x.id===id); if(!e) return; Object.assign(e,patch); this.save(); }
     renderList(){ this.listEl.replaceChildren(); for(const e of this.data){ const row=document.createElement('div'); row.className='palette-row'; const color=document.createElement('input'); color.type='color'; color.value=e.value; color.oninput=()=>this.updateColor(e.id,{value:color.value}); const name=document.createElement('input'); name.type='text'; name.value=e.name; name.placeholder='nazwa'; name.oninput=()=>this.updateColor(e.id,{name:name.value}); const del=document.createElement('button'); del.textContent='Delete'; del.onclick=()=>this.deleteColor(e.id); row.append(color,name,del); this.listEl.appendChild(row);} }
     renderSelect(){ const prev=this.selectEl.value; this.selectEl.replaceChildren(); for(const e of this.data){ const opt=document.createElement('option'); opt.value=e.id; opt.textContent=`${e.name} (${e.value})`; opt.style.background=e.value; this.selectEl.appendChild(opt);} if(this.data.length){ const found=this.data.find(x=>x.id===prev)||this.data[0]; this.selectEl.value=found.id; } }
-  }
-
-  class Honeycomb{
+  }class Honeycomb{
     constructor(host){ this.placed=new Set(); this.frontier=new Set(); this.order=[]; this.colorByKey=new Map(); this.radius=20; this.diameter=40; this.areaDiamW=90; this.areaDiamH=60; this.areaW=0; this.areaH=0; this.dirs=[{u:0,v:1},{u:1,v:0},{u:1,v:-1},{u:0,v:-1},{u:-1,v:0},{u:-1,v:1}]; this.svg=document.createElementNS('http://www.w3.org/2000/svg','svg'); this.rect=document.createElementNS('http://www.w3.org/2000/svg','rect'); this.gCircles=document.createElementNS('http://www.w3.org/2000/svg','g'); this.svg.append(this.rect,this.gCircles); host.innerHTML=''; host.appendChild(this.svg); this.rect.setAttribute('class','area'); this.diameterLabel=document.getElementById('diameterPx'); this.countLabel=document.getElementById('count'); this.reset(); const ro=new ResizeObserver(()=>this.resizeToHost(host)); ro.observe(host); this.resizeToHost(host); }
     key(a){return `${a.u},${a.v}`}
     axialToPoint(a){ const R=this.radius; const dx=Math.sqrt(3)*R; const up={x:0,y:2*R}; const upr={x:dx,y:R}; return {x:a.u*upr.x + a.v*up.x, y:a.u*upr.y + a.v*up.y}; }
@@ -88,6 +82,8 @@ else { c.removeAttribute('stroke'); c.removeAttribute('stroke-width'); c.removeA
   function main(){ const host=document.getElementById('svgHost'); if(!host) return; const model=new Honeycomb(host); const palette=new PaletteManager(); document.getElementById('btnAddOne').onclick=()=>model.addOne(); document.getElementById('btnAddSix').onclick=()=>model.addSix(); document.getElementById('btnAddRing').onclick=()=>model.addRing(); document.getElementById('btnReset').onclick=()=>model.reset(); document.getElementById('btnAddRandomColor').onclick=()=>{ const sel=palette.selected; if(!sel) return; model.addRandomWithColor(sel.value); }; document.getElementById('btnAddRandomAny').onclick=()=>{ const all=palette.colors; if(!all.length) return; const pick=all[Math.floor(Math.random()*all.length)].value; model.addRandomWithColor(pick); } }
   document.addEventListener('DOMContentLoaded', main);
 })();
+
+
 
 
 

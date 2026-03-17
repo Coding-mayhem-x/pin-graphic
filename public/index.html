@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pl">
 <head>
   <meta charset="utf-8" />
@@ -18,13 +18,13 @@
       </div>
       <div class="info">
         <div><strong>Srednica (px):</strong> <span id="diameterPx">-</span></div>
-        <div><strong>Obszar (srednice):</strong> 90 � 60</div>
+        <div><strong>Obszar (srednice):</strong> 90 × 60</div>
         <div><strong>Kola:</strong> <span id="count">0</span></div>
       </div>
           <section class="palette">
         <h2>Kolory</h2>
                         <div class="palette-controls">
-          <select id="paletteSelect" title="Wyb�r koloru"></select>
+          <select id="paletteSelect" title="Wybór koloru"></select>
           <select id="strategySelect" title="Strategia">
             <option value="frontier">Frontier</option>
             <option value="clock">Clock</option>
@@ -37,14 +37,14 @@
           <button id="btnPaletteAdd">Add color</button>
           <button id="btnPaletteReset" class="danger">Reset palette</button>
         </div>
-            <section class=\"runner\">
+            <section class="runner">
         <h2>Auto</h2>
-        <div class=\"runner-controls\">
-          <button id=\"btnPlay\" title=\"Play\">?</button>
-          <button id=\"btnPause\" title=\"Pause\">?</button>
-          <button id=\"btnSpeedDown\" title=\"Slower\">-</button>
-          <button id=\"btnSpeedUp\" title=\"Faster\">+</button>
-          <span class=\"speed\" id=\"speedLabel\">5x/s</span>
+        <div class="runner-controls">
+          <button id="btnPlay" title="Play"><svg class="icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M8 5v14l11-7z"/></svg></button>
+          <button id="btnPause" title="Pause"><svg class="icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg></button>
+          <button id="btnSpeedDown" title="Slower"><svg class="icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg></button>
+          <button id="btnSpeedUp" title="Faster"><svg class="icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg></button>
+          <span class="speed" id="speedLabel">5×/s</span>
         </div>
       </section></section></aside>
     <main class="stage">
@@ -54,6 +54,9 @@
   <script src="app.js"></script>
 </body>
 </html>
+
+
+
 
 
 

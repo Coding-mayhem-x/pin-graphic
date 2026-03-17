@@ -1,4 +1,4 @@
-/* Clean TypeScript build for Honeycomb Circles Simulator */
+﻿/* Clean TypeScript build for Honeycomb Circles Simulator */
 
 type Axial = { u: number; v: number };
 type Point = { x: number; y: number };
@@ -79,7 +79,7 @@ class PaletteManager {
         const parsed = JSON.parse(raw) as ColorEntry[];
         if (Array.isArray(parsed) && parsed.length) { this.data = parsed; return; }
       }
-    } catch (e) { /* ignore */ }
+    } catch { /* ignore */ }
     this.resetDefaults(false);
   }
 
@@ -103,16 +103,9 @@ class PaletteManager {
     if (persist) this.save(); else this.renderSelect();
   }
 
-  private addColor() {
-    const n = this.data.length + 1; const entry: ColorEntry = { id: 'c' + Date.now(), name: `Color ${n}`, value: '#888888' };
-    this.data.push(entry); this.renderList(); this.save();
-  }
-
+  private addColor() { const n = this.data.length + 1; const entry: ColorEntry = { id: 'c' + Date.now(), name: `Color ${n}`, value: '#888888' }; this.data.push(entry); this.renderList(); this.save(); }
   private deleteColor(id: string) { this.data = this.data.filter((x) => x.id !== id); this.renderList(); this.save(); }
-
-  private updateColor(id: string, patch: Partial<ColorEntry>) {
-    const e = this.data.find((x) => x.id === id); if (!e) return; Object.assign(e, patch); this.save();
-  }
+  private updateColor(id: string, patch: Partial<ColorEntry>) { const e = this.data.find((x) => x.id === id); if (!e) return; Object.assign(e, patch); this.save(); }
 
   private renderList() {
     this.listEl.replaceChildren();
@@ -158,53 +151,42 @@ class Honeycomb {
 
   private key(a: Axial): string { return `${a.u},${a.v}`; }
   private axialToPoint(a: Axial): Point { const R = this.radius; const dx = Math.sqrt(3) * R; const up = { x: 0, y: 2 * R }; const upr = { x: dx, y: R }; return { x: a.u * upr.x + a.v * up.x, y: a.u * upr.y + a.v * up.y }; }
-
-  private pointToAxialRound(p: Point): Axial {
-    const R = this.radius; const dx = Math.sqrt(3) * R; const uf = p.x / dx; const vf = (p.y - R * uf) / (2 * R);
-    let x = uf, y = vf, z = -uf - vf; let rx = Math.round(x), ry = Math.round(y), rz = Math.round(z);
-    const xd = Math.abs(rx - x), yd = Math.abs(ry - y), zd = Math.abs(rz - z);
-    if (xd > yd && xd > zd) rx = -ry - rz; else if (yd > zd) ry = -rx - rz; else rz = -rx - ry;
-    return { u: rx, v: ry };
-  }
+  private pointToAxialRound(p: Point): Axial { const R = this.radius; const dx = Math.sqrt(3) * R; const uf = p.x / dx; const vf = (p.y - R * uf) / (2 * R); let x = uf, y = vf, z = -uf - vf; let rx = Math.round(x), ry = Math.round(y), rz = Math.round(z); const xd = Math.abs(rx - x), yd = Math.abs(ry - y), zd = Math.abs(rz - z); if (xd > yd && xd > zd) rx = -ry - rz; else if (yd > zd) ry = -rx - rz; else rz = -rx - ry; return { u: rx, v: ry }; }
 
   private ring(a: Axial): number { const x = a.u, y = a.v, z = -a.u - a.v; return Math.max(Math.abs(x), Math.abs(y), Math.abs(z)); }
   private ensureSeed() { if (!this.placed.size) { this.place({ u: 0, v: 0 }); } }
 
-  private place(a: Axial, color?: string) {
-    const k = this.key(a); if (this.placed.has(k)) return; this.placed.add(k); this.order.push(a); if (color) this.colorByKey.set(k, color);
-    for (const d of this.dirs) { const n = { u: a.u + d.u, v: a.v + d.v }; const nk = this.key(n); if (!this.placed.has(nk)) this.frontier.add(nk); }
-  }
+  private place(a: Axial, color?: string) { const k = this.key(a); if (this.placed.has(k)) return; this.placed.add(k); this.order.push(a); if (color) this.colorByKey.set(k, color); for (const d of this.dirs) { const n = { u: a.u + d.u, v: a.v + d.v }; const nk = this.key(n); if (!this.placed.has(nk)) this.frontier.add(nk); } }
 
-  private nextCandidate(): Axial | undefined {
-    let best: { a: Axial; ring: number; ord: number } | undefined;
-    for (const k of this.frontier) { const [us, vs] = k.split(','); const a = { u: parseInt(us, 10), v: parseInt(vs, 10) }; const r = this.ring(a); const ord = this.directionOrder(a); if (!best || r < best.ring || (r === best.ring && ord < best.ord)) best = { a, ring: r, ord }; }
-    return best?.a;
-  }
+  private nextCandidate(): Axial | undefined { let best: { a: Axial; ring: number; ord: number } | undefined; for (const k of this.frontier) { const [us, vs] = k.split(','); const a = { u: parseInt(us, 10), v: parseInt(vs, 10) }; const r = this.ring(a); const ord = this.directionOrder(a); if (!best || r < best.ring || (r === best.ring && ord < best.ord)) best = { a, ring: r, ord }; } return best?.a; }
 
   private randomCandidateInside(): Axial | undefined { const arr: Axial[] = []; for (const k of this.frontier) { const [us, vs] = k.split(','); const a = { u: parseInt(us, 10), v: parseInt(vs, 10) }; const p = this.axialToPoint(a); if (this.withinArea(p)) arr.push(a); } if (!arr.length) return undefined; return arr[Math.floor(Math.random() * arr.length)]; }
 
   private angleOfPoint(p: Point): number { return Math.atan2(p.y, p.x); }
   private angleDiff(a: number, b: number): number { let d = a - b; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return Math.abs(d); }
-  private addAx(a: Axial, b: Axial, k = 1): Axial { return { u: a.u + b.u * k, v: a.v + b.v * k }; }
+  private directionOrder(a: Axial): number { const p = this.axialToPoint(a); const ang = Math.atan2(p.y, p.x); const rot = ang - Math.PI / 2; let t = rot; while (t < 0) t += Math.PI * 2; return Math.floor((t + Math.PI / 6) / (Math.PI / 3)) % 6; }
 
-    private findNearestFree(target: Axial, maxRing: number = 60, biasAngle?: number): Axial | undefined {
+  private addAx(a: Axial, b: Axial, k = 1): Axial { return { u: a.u + b.u * k, v: a.v + b.v * k }; }
+  private neighbors(a: Axial): Axial[] { return this.dirs.map(d => ({ u: a.u + d.u, v: a.v + d.v })); }
+  private nodesOfColor(color: string): Axial[] { const res: Axial[] = []; for (const a of this.order) { if (this.colorByKey.get(this.key(a)) === color) res.push(a); } return res; }
+  private componentsOfColor(color: string): Axial[][] { const nodes=this.nodesOfColor(color); const set=new Set(nodes.map(a=>this.key(a))); const seen=new Set<string>(); const comps:Axial[][]=[]; for(const a of nodes){ const k=this.key(a); if(seen.has(k)) continue; const comp:Axial[]=[]; const stack:Axial[]=[a]; seen.add(k); while(stack.length){ const cur=stack.pop()!; comp.push(cur); for(const nb of this.neighbors(cur)){ const nk=this.key(nb); if(set.has(nk) && !seen.has(nk)){ seen.add(nk); stack.push(nb);} } } comps.push(comp);} return comps; }
+  private centroidOfGroup(group: Axial[]): Point { let sx=0, sy=0; for(const a of group){ const p=this.axialToPoint(a); sx+=p.x; sy+=p.y;} const n=group.length||1; return { x:sx/n, y:sy/n } }
+  private freeNeighbors(group: Axial[]): Axial[] { const uniq=new Set<string>(); const out:Axial[]=[]; for(const a of group){ for(const nb of this.neighbors(a)){ const k=this.key(nb); if(uniq.has(k)) continue; uniq.add(k); const p=this.axialToPoint(nb); if(!this.placed.has(k) && this.withinArea(p)) out.push(nb);} } return out; }
+
+  private findNearestFree(target: Axial, maxRing: number = 60, biasAngle?: number): Axial | undefined {
     const isFree = (a: Axial) => { const k = this.key(a); const p = this.axialToPoint(a); return !this.placed.has(k) && this.withinArea(p); };
     if (isFree(target)) return target;
-
-    // choose starting side based on bias angle if provided
-    const dirAngles = this.dirs.map(d => this.angleOfPoint(this.axialToPoint({ u: target.u + d.u, v: target.v + d.v })));
     let startSide = 0;
     if (typeof biasAngle === 'number') {
       let best = Infinity; let idx = 0;
-      for (let i=0;i<6;i++){ const diff = this.angleDiff(dirAngles[i], biasAngle); if (diff < best){ best = diff; idx = i; } }
-      startSide = (idx + 5) % 6; // start one side "behind" the best pointing dir
+      for (let i=0;i<6;i++){ const nb={u:target.u+this.dirs[i].u, v:target.v+this.dirs[i].v}; const ang=this.angleOfPoint(this.axialToPoint(nb)); const diff=this.angleDiff(ang,biasAngle); if(diff<best){ best=diff; idx=i; } }
+      startSide = (idx + 5) % 6;
     }
-
-    for (let r = 1; r <= maxRing; r++) {
+    for (let r=1;r<=maxRing;r++){
       let q: Axial = this.addAx(target, this.dirs[startSide], r);
-      for (let s = 0; s < 6; s++) {
+      for (let s=0;s<6;s++){
         const side = (startSide + s) % 6;
-        for (let step = 0; step < r; step++) {
+        for (let step=0; step<r; step++){
           if (isFree(q)) return q;
           q = this.addAx(q, this.dirs[(side + 1) % 6], 1);
         }
@@ -212,8 +194,6 @@ class Honeycomb {
     }
     return undefined;
   }
-
-  private directionOrder(a: Axial): number { const p = this.axialToPoint(a); const ang = Math.atan2(p.y, p.x); const rot = ang - Math.PI / 2; let t = rot; while (t < 0) t += Math.PI * 2; return Math.floor((t + Math.PI / 6) / (Math.PI / 3)) % 6; }
 
   resizeToHost(host: HTMLElement) {
     const w = host.clientWidth, h = host.clientHeight; const d1 = Math.floor(w / this.areaDiamW), d2 = Math.floor(h / this.areaDiamH); const d = Math.max(2, Math.min(d1, d2));
@@ -226,46 +206,63 @@ class Honeycomb {
 
   private withinArea(p: Point): boolean { const R = this.radius; return p.x >= -this.areaW / 2 + R && p.x <= this.areaW / 2 - R && p.y >= -this.areaH / 2 + R && p.y <= this.areaH / 2 - R; }
 
-  addOne(): boolean {
-    this.ensureSeed();
-    while (this.frontier.size) { const a = this.nextCandidate(); if (!a) break; const k = this.key(a); this.frontier.delete(k); const p = this.axialToPoint(a); if (!this.withinArea(p)) continue; this.place(a); this.renderCircle(a, p); this.updateCount(); return true; }
+  addOne(): boolean { this.ensureSeed(); while (this.frontier.size) { const a = this.nextCandidate(); if (!a) break; const k = this.key(a); this.frontier.delete(k); const p = this.axialToPoint(a); if (!this.withinArea(p)) continue; this.place(a); this.renderCircle(a, p); this.updateCount(); return true; } return false; }
+  addSix(): number { let c=0; for (let i=0;i<6;i++) if(this.addOne()) c++; return c; }
+  addRing(): number { const before=this.minFrontierRing(); let c=0; while(this.frontier.size){ const r=this.minFrontierRing(); if(r!==before) break; if(this.addOne()) c++; else break; } return c; }
+
+  addRandomWithColor(color: string): boolean { this.ensureSeed(); const a=this.randomCandidateInside(); if(!a) return false; const k=this.key(a); this.frontier.delete(k); const p=this.axialToPoint(a); this.place(a,color); this.renderCircle(a,p); this.updateCount(); return true; }
+
+  private placeAsNewInWedge(color: string, center: number, attempts=200): boolean {
+    for(let i=0;i<attempts;i++){
+      const x = Math.random() * (this.areaW - 2 * this.radius) + (-this.areaW / 2 + this.radius);
+      const y = Math.random() * (this.areaH - 2 * this.radius) + (-this.areaH / 2 + this.radius);
+      const p: Point = { x, y }; if (this.angleDiff(this.angleOfPoint(p), center) > Math.PI/12) continue;
+      const a = this.pointToAxialRound(p); const b = this.findNearestFree(a, 40, center);
+      if (b) { const pb=this.axialToPoint(b); this.place(b, color); this.renderCircle(b, pb); this.updateCount(); return true; }
+    }
     return false;
   }
-
-  addSix(): number { let c = 0; for (let i = 0; i < 6; i++) if (this.addOne()) c++; return c; }
-  addRing(): number { const before = this.minFrontierRing(); let c = 0; while (this.frontier.size) { const r = this.minFrontierRing(); if (r !== before) break; if (this.addOne()) c++; else break; } return c; }
-
-  addRandomWithColor(color: string): boolean { this.ensureSeed(); const a = this.randomCandidateInside(); if (!a) return false; const k = this.key(a); this.frontier.delete(k); const p = this.axialToPoint(a); this.place(a, color); this.renderCircle(a, p); this.updateCount(); return true; }
 
   addClockWithColor(color: string): boolean {
-    this.ensureSeed(); const hour = Math.floor(Math.random() * 12); const center = Math.PI / 2 + hour * (Math.PI / 6); const half = Math.PI / 12; const maxTries = 200;
-    const existing: Axial[] = []; for (const a of this.order) { if (this.colorByKey.get(this.key(a)) === color) existing.push(a); }
-    if (existing.length) {
-      const inSector = existing.filter((a) => this.angleDiff(this.angleOfPoint(this.axialToPoint(a)), center) <= half);
-      const pool = inSector.length ? inSector : existing;
-      const order = pool.slice().sort((a, b) => this.angleDiff(this.angleOfPoint(this.axialToPoint(a)), center) - this.angleDiff(this.angleOfPoint(this.axialToPoint(b)), center));
-      for (const base of order) {
-        const candidates: Axial[] = []; for (const d of this.dirs) candidates.push({ u: base.u + d.u, v: base.v + d.v });
-        candidates.sort((a, b) => this.angleDiff(this.angleOfPoint(this.axialToPoint(a)), center) - this.angleDiff(this.angleOfPoint(this.axialToPoint(b)), center));
-        for (const n of candidates) { const p = this.axialToPoint(n); if (!this.placed.has(this.key(n)) && this.withinArea(p)) { this.place(n, color); this.renderCircle(n, p); this.updateCount(); return true; } }
-      }
-    }
-    for (let i = 0; i < maxTries; i++) {
-      const x = Math.random() * (this.areaW - 2 * this.radius) + (-this.areaW / 2 + this.radius);
-      const y = Math.random() * (this.areaH - 2 * this.radius) + (-this.areaH / 2 + this.radius);
-      const p: Point = { x, y }; if (this.angleDiff(this.angleOfPoint(p), center) > half) continue;
-      const a = this.pointToAxialRound(p); const b = this.findNearestFree(a, 40, center); if (b) { const pb = this.axialToPoint(b); this.place(b, color); this.renderCircle(b, pb); this.updateCount(); return true; }
-    }
-    // final fallback: random anywhere in area
-    for (let i = 0; i < 500; i++) {
-      const x = Math.random() * (this.areaW - 2 * this.radius) + (-this.areaW / 2 + this.radius);
-      const y = Math.random() * (this.areaH - 2 * this.radius) + (-this.areaH / 2 + this.radius);
-      const a = this.pointToAxialRound({ x, y }); const b = this.findNearestFree(a, 60, center); if (b) { const pb = this.axialToPoint(b); this.place(b, color); this.renderCircle(b, pb); this.updateCount(); return true; }
-    }
+    this.ensureSeed(); const hour = Math.floor(Math.random() * 12); const center = Math.PI / 2 + hour * (Math.PI / 6); const maxTries = 200;
+    const existing: Axial[] = this.nodesOfColor(color);
+    if (!existing.length) { return this.placeAsNewInWedge(color, center) || false; }
+    const comps = this.componentsOfColor(color); const comp = comps[Math.floor(Math.random() * comps.length)];
+    // try touching neighbor biased by center
+    const candidates: Axial[] = []; for (const base of comp){ let bestDir=0, best=Infinity; for(let i=0;i<6;i++){ const nb={u:base.u+this.dirs[i].u, v:base.v+this.dirs[i].v}; const ang=this.angleOfPoint(this.axialToPoint(nb)); const d=this.angleDiff(ang, center); if(d<best){ best=d; bestDir=i; } } candidates.push({ u: base.u + this.dirs[bestDir].u, v: base.v + this.dirs[bestDir].v }); }
+    for (const n of candidates){ const k=this.key(n); const p=this.axialToPoint(n); if(!this.placed.has(k) && this.withinArea(p)){ this.place(n,color); this.renderCircle(n,p); this.updateCount(); return true; } }
+    // random in wedge
+    for(let i=0;i<maxTries;i++){ const x=Math.random()*(this.areaW-2*this.radius)+(-this.areaW/2+this.radius); const y=Math.random()*(this.areaH-2*this.radius)+(-this.areaH/2+this.radius); const p={x,y}; if(this.angleDiff(this.angleOfPoint(p),center)>Math.PI/12) continue; const a=this.pointToAxialRound(p); const b=this.findNearestFree(a,40,center); if(b){ const pb=this.axialToPoint(b); this.place(b,color); this.renderCircle(b,pb); this.updateCount(); return true; } }
     return false;
   }
 
-  private minFrontierRing(): number { let best = Infinity; for (const k of this.frontier) { const [u, v] = k.split(',').map(Number); const r = this.ring({ u, v }); if (r < best) best = r; } return best; }
+  addClockV2WithColor(color: string): boolean {
+    this.ensureSeed();
+    const comps = this.componentsOfColor(color);
+    if (comps.length === 0) {
+      const hour = Math.floor(Math.random() * 12); const center = Math.PI/2 + hour*(Math.PI/6);
+      return this.placeAsNewInWedge(color, center);
+    }
+    const comp = comps[Math.floor(Math.random()*comps.length)];
+    const centroid = this.centroidOfGroup(comp);
+    const hour2 = Math.floor(Math.random() * 12); const center2 = Math.PI/2 + hour2*(Math.PI/6); const half = Math.PI/12;
+    const inWedge: Axial[] = [];
+    for (const a of comp) { const p = this.axialToPoint(a); const rel={x:p.x-centroid.x,y:p.y-centroid.y}; if (this.angleDiff(this.angleOfPoint(rel), center2) <= half) inWedge.push(a); }
+    let base: Axial;
+    if (inWedge.length) base = inWedge[Math.floor(Math.random()*inWedge.length)];
+    else { let bestA = comp[0]; let best = Infinity; for (const a of comp){ const p=this.axialToPoint(a); const rel={x:p.x-centroid.x,y:p.y-centroid.y}; const d=this.angleDiff(this.angleOfPoint(rel), center2); if (d<best){ best=d; bestA=a; } } base = bestA; }
+    let bestDir = 0; let bestD = Infinity; for (let i=0;i<6;i++){ const nb={u:base.u+this.dirs[i].u, v:base.v+this.dirs[i].v}; const ang=this.angleOfPoint(this.axialToPoint(nb)); const d=this.angleDiff(ang, center2); if(d<bestD){ bestD=d; bestDir=i; } }
+    const nb = { u: base.u + this.dirs[bestDir].u, v: base.v + this.dirs[bestDir].v };
+    const nbKey = this.key(nb); const nbPt = this.axialToPoint(nb);
+    if (!this.placed.has(nbKey) && this.withinArea(nbPt)) { this.place(nb,color); this.renderCircle(nb,nbPt); this.updateCount(); return true; }
+    // nearest free neighbor toward centroid
+    let bestPick: { a: Axial; dist: number } | undefined; for(const n of this.freeNeighbors(comp)){ const p=this.axialToPoint(n); const dx=p.x-centroid.x, dy=p.y-centroid.y; const d=dx*dx+dy*dy; if(!bestPick || d<bestPick.dist) bestPick={a:n,dist:d}; }
+    if(bestPick){ const pb=this.axialToPoint(bestPick.a); this.place(bestPick.a,color); this.renderCircle(bestPick.a,pb); this.updateCount(); return true; }
+    // fallback new in wedge
+    return this.placeAsNewInWedge(color, center2);
+  }
+
+  private minFrontierRing(): number { let best=Infinity; for(const k of this.frontier){ const [u,v]=k.split(',').map(Number); const r=this.ring({u,v}); if(r<best) best=r; } return best; }
 
   reset() { this.placed.clear(); this.frontier.clear(); this.order.length = 0; this.colorByKey.clear(); this.gCircles.replaceChildren(); this.place({ u: 0, v: 0 }); const p0 = this.axialToPoint({ u: 0, v: 0 }); this.renderCircle({ u: 0, v: 0 }, p0); this.updateCount(); }
 
@@ -295,12 +292,13 @@ function main() {
   (document.getElementById('btnAddSix') as HTMLButtonElement).onclick = () => model.addSix();
   (document.getElementById('btnAddRing') as HTMLButtonElement).onclick = () => model.addRing();
   (document.getElementById('btnReset') as HTMLButtonElement).onclick = () => model.reset();
-  (document.getElementById('btnAddRandomColor') as HTMLButtonElement).onclick = () => { const strat = (document.getElementById('strategySelect') as HTMLSelectElement)?.value || 'frontier'; if (strat === 'clock') { const all = palette.colors; if (!all.length) return; const pick = all[Math.floor(Math.random() * all.length)].value; model.addClockWithColor(pick); } else { const sel = palette.selected; if (!sel) return; model.addRandomWithColor(sel.value); } };
-  (document.getElementById('btnAddRandomAny') as HTMLButtonElement).onclick = () => { const all = palette.colors; if (!all.length) return; const pick = all[Math.floor(Math.random() * all.length)].value; const strat = (document.getElementById('strategySelect') as HTMLSelectElement)?.value || 'frontier'; if (strat === 'clock') model.addClockWithColor(pick); else model.addRandomWithColor(pick); };
+  (document.getElementById('btnAddRandomColor') as HTMLButtonElement).onclick = () => {
+    const strat = (document.getElementById('strategySelect') as HTMLSelectElement)?.value || 'frontier';
+    if (strat === 'clock') { const all = palette.colors; if (!all.length) return; const pick = all[Math.floor(Math.random() * all.length)].value; model.addClockWithColor(pick); }
+    else if (strat === 'clock2') { const all = palette.colors; if (!all.length) return; const pick = all[Math.floor(Math.random() * all.length)].value; model.addClockV2WithColor(pick); }
+    else { const sel = palette.selected; if (!sel) return; model.addRandomWithColor(sel.value); }
+  };
+  (document.getElementById('btnAddRandomAny') as HTMLButtonElement).onclick = () => { const all = palette.colors; if (!all.length) return; const pick = all[Math.floor(Math.random() * all.length)].value; const strat = (document.getElementById('strategySelect') as HTMLSelectElement)?.value || 'frontier'; if (strat === 'clock') model.addClockWithColor(pick); else if (strat === 'clock2') model.addClockV2WithColor(pick); else model.addRandomWithColor(pick); };
 }
 
 document.addEventListener('DOMContentLoaded', main);
-
-
-
-

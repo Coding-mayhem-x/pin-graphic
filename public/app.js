@@ -68,7 +68,7 @@ class PaletteManager {
                 }
             }
         }
-        catch (e) { /* ignore */ }
+        catch { /* ignore */ }
         this.resetDefaults(false);
     }
     save() { localStorage.setItem(LS_PALETTE_KEY, JSON.stringify(this.data)); this.renderSelect(); }
@@ -92,21 +92,10 @@ class PaletteManager {
         else
             this.renderSelect();
     }
-    addColor() {
-        const n = this.data.length + 1;
-        const entry = { id: 'c' + Date.now(), name: `Color ${n}`, value: '#888888' };
-        this.data.push(entry);
-        this.renderList();
-        this.save();
-    }
+    addColor() { const n = this.data.length + 1; const entry = { id: 'c' + Date.now(), name: `Color ${n}`, value: '#888888' }; this.data.push(entry); this.renderList(); this.save(); }
     deleteColor(id) { this.data = this.data.filter((x) => x.id !== id); this.renderList(); this.save(); }
-    updateColor(id, patch) {
-        const e = this.data.find((x) => x.id === id);
-        if (!e)
-            return;
-        Object.assign(e, patch);
-        this.save();
-    }
+    updateColor(id, patch) { const e = this.data.find((x) => x.id === id); if (!e)
+        return; Object.assign(e, patch); this.save(); }
     renderList() {
         this.listEl.replaceChildren();
         for (const e of this.data) {
@@ -173,53 +162,32 @@ class Honeycomb {
     }
     key(a) { return `${a.u},${a.v}`; }
     axialToPoint(a) { const R = this.radius; const dx = Math.sqrt(3) * R; const up = { x: 0, y: 2 * R }; const upr = { x: dx, y: R }; return { x: a.u * upr.x + a.v * up.x, y: a.u * upr.y + a.v * up.y }; }
-    pointToAxialRound(p) {
-        const R = this.radius;
-        const dx = Math.sqrt(3) * R;
-        const uf = p.x / dx;
-        const vf = (p.y - R * uf) / (2 * R);
-        let x = uf, y = vf, z = -uf - vf;
-        let rx = Math.round(x), ry = Math.round(y), rz = Math.round(z);
-        const xd = Math.abs(rx - x), yd = Math.abs(ry - y), zd = Math.abs(rz - z);
-        if (xd > yd && xd > zd)
-            rx = -ry - rz;
-        else if (yd > zd)
-            ry = -rx - rz;
-        else
-            rz = -rx - ry;
-        return { u: rx, v: ry };
-    }
+    pointToAxialRound(p) { const R = this.radius; const dx = Math.sqrt(3) * R; const uf = p.x / dx; const vf = (p.y - R * uf) / (2 * R); let x = uf, y = vf, z = -uf - vf; let rx = Math.round(x), ry = Math.round(y), rz = Math.round(z); const xd = Math.abs(rx - x), yd = Math.abs(ry - y), zd = Math.abs(rz - z); if (xd > yd && xd > zd)
+        rx = -ry - rz;
+    else if (yd > zd)
+        ry = -rx - rz;
+    else
+        rz = -rx - ry; return { u: rx, v: ry }; }
     ring(a) { const x = a.u, y = a.v, z = -a.u - a.v; return Math.max(Math.abs(x), Math.abs(y), Math.abs(z)); }
     ensureSeed() { if (!this.placed.size) {
         this.place({ u: 0, v: 0 });
     } }
-    place(a, color) {
-        const k = this.key(a);
-        if (this.placed.has(k))
-            return;
-        this.placed.add(k);
-        this.order.push(a);
-        if (color)
-            this.colorByKey.set(k, color);
-        for (const d of this.dirs) {
-            const n = { u: a.u + d.u, v: a.v + d.v };
-            const nk = this.key(n);
-            if (!this.placed.has(nk))
-                this.frontier.add(nk);
-        }
-    }
-    nextCandidate() {
-        let best;
-        for (const k of this.frontier) {
-            const [us, vs] = k.split(',');
-            const a = { u: parseInt(us, 10), v: parseInt(vs, 10) };
-            const r = this.ring(a);
-            const ord = this.directionOrder(a);
-            if (!best || r < best.ring || (r === best.ring && ord < best.ord))
-                best = { a, ring: r, ord };
-        }
-        return best === null || best === void 0 ? void 0 : best.a;
-    }
+    place(a, color) { const k = this.key(a); if (this.placed.has(k))
+        return; this.placed.add(k); this.order.push(a); if (color)
+        this.colorByKey.set(k, color); for (const d of this.dirs) {
+        const n = { u: a.u + d.u, v: a.v + d.v };
+        const nk = this.key(n);
+        if (!this.placed.has(nk))
+            this.frontier.add(nk);
+    } }
+    nextCandidate() { let best; for (const k of this.frontier) {
+        const [us, vs] = k.split(',');
+        const a = { u: parseInt(us, 10), v: parseInt(vs, 10) };
+        const r = this.ring(a);
+        const ord = this.directionOrder(a);
+        if (!best || r < best.ring || (r === best.ring && ord < best.ord))
+            best = { a, ring: r, ord };
+    } return best === null || best === void 0 ? void 0 : best.a; }
     randomCandidateInside() { const arr = []; for (const k of this.frontier) {
         const [us, vs] = k.split(',');
         const a = { u: parseInt(us, 10), v: parseInt(vs, 10) };
@@ -232,25 +200,68 @@ class Honeycomb {
     angleDiff(a, b) { let d = a - b; while (d > Math.PI)
         d -= 2 * Math.PI; while (d < -Math.PI)
         d += 2 * Math.PI; return Math.abs(d); }
+    directionOrder(a) { const p = this.axialToPoint(a); const ang = Math.atan2(p.y, p.x); const rot = ang - Math.PI / 2; let t = rot; while (t < 0)
+        t += Math.PI * 2; return Math.floor((t + Math.PI / 6) / (Math.PI / 3)) % 6; }
     addAx(a, b, k = 1) { return { u: a.u + b.u * k, v: a.v + b.v * k }; }
+    neighbors(a) { return this.dirs.map(d => ({ u: a.u + d.u, v: a.v + d.v })); }
+    nodesOfColor(color) { const res = []; for (const a of this.order) {
+        if (this.colorByKey.get(this.key(a)) === color)
+            res.push(a);
+    } return res; }
+    componentsOfColor(color) { const nodes = this.nodesOfColor(color); const set = new Set(nodes.map(a => this.key(a))); const seen = new Set(); const comps = []; for (const a of nodes) {
+        const k = this.key(a);
+        if (seen.has(k))
+            continue;
+        const comp = [];
+        const stack = [a];
+        seen.add(k);
+        while (stack.length) {
+            const cur = stack.pop();
+            comp.push(cur);
+            for (const nb of this.neighbors(cur)) {
+                const nk = this.key(nb);
+                if (set.has(nk) && !seen.has(nk)) {
+                    seen.add(nk);
+                    stack.push(nb);
+                }
+            }
+        }
+        comps.push(comp);
+    } return comps; }
+    centroidOfGroup(group) { let sx = 0, sy = 0; for (const a of group) {
+        const p = this.axialToPoint(a);
+        sx += p.x;
+        sy += p.y;
+    } const n = group.length || 1; return { x: sx / n, y: sy / n }; }
+    freeNeighbors(group) { const uniq = new Set(); const out = []; for (const a of group) {
+        for (const nb of this.neighbors(a)) {
+            const k = this.key(nb);
+            if (uniq.has(k))
+                continue;
+            uniq.add(k);
+            const p = this.axialToPoint(nb);
+            if (!this.placed.has(k) && this.withinArea(p))
+                out.push(nb);
+        }
+    } return out; }
     findNearestFree(target, maxRing = 60, biasAngle) {
         const isFree = (a) => { const k = this.key(a); const p = this.axialToPoint(a); return !this.placed.has(k) && this.withinArea(p); };
         if (isFree(target))
             return target;
-        // choose starting side based on bias angle if provided
-        const dirAngles = this.dirs.map(d => this.angleOfPoint(this.axialToPoint({ u: target.u + d.u, v: target.v + d.v })));
         let startSide = 0;
         if (typeof biasAngle === 'number') {
             let best = Infinity;
             let idx = 0;
             for (let i = 0; i < 6; i++) {
-                const diff = this.angleDiff(dirAngles[i], biasAngle);
+                const nb = { u: target.u + this.dirs[i].u, v: target.v + this.dirs[i].v };
+                const ang = this.angleOfPoint(this.axialToPoint(nb));
+                const diff = this.angleDiff(ang, biasAngle);
                 if (diff < best) {
                     best = diff;
                     idx = i;
                 }
             }
-            startSide = (idx + 5) % 6; // start one side "behind" the best pointing dir
+            startSide = (idx + 5) % 6;
         }
         for (let r = 1; r <= maxRing; r++) {
             let q = this.addAx(target, this.dirs[startSide], r);
@@ -265,8 +276,6 @@ class Honeycomb {
         }
         return undefined;
     }
-    directionOrder(a) { const p = this.axialToPoint(a); const ang = Math.atan2(p.y, p.x); const rot = ang - Math.PI / 2; let t = rot; while (t < 0)
-        t += Math.PI * 2; return Math.floor((t + Math.PI / 6) / (Math.PI / 3)) % 6; }
     resizeToHost(host) {
         const w = host.clientWidth, h = host.clientHeight;
         const d1 = Math.floor(w / this.areaDiamW), d2 = Math.floor(h / this.areaDiamH);
@@ -284,24 +293,20 @@ class Honeycomb {
         this.renderAll();
     }
     withinArea(p) { const R = this.radius; return p.x >= -this.areaW / 2 + R && p.x <= this.areaW / 2 - R && p.y >= -this.areaH / 2 + R && p.y <= this.areaH / 2 - R; }
-    addOne() {
-        this.ensureSeed();
-        while (this.frontier.size) {
-            const a = this.nextCandidate();
-            if (!a)
-                break;
-            const k = this.key(a);
-            this.frontier.delete(k);
-            const p = this.axialToPoint(a);
-            if (!this.withinArea(p))
-                continue;
-            this.place(a);
-            this.renderCircle(a, p);
-            this.updateCount();
-            return true;
-        }
-        return false;
-    }
+    addOne() { this.ensureSeed(); while (this.frontier.size) {
+        const a = this.nextCandidate();
+        if (!a)
+            break;
+        const k = this.key(a);
+        this.frontier.delete(k);
+        const p = this.axialToPoint(a);
+        if (!this.withinArea(p))
+            continue;
+        this.place(a);
+        this.renderCircle(a, p);
+        this.updateCount();
+        return true;
+    } return false; }
     addSix() { let c = 0; for (let i = 0; i < 6; i++)
         if (this.addOne())
             c++; return c; }
@@ -316,42 +321,12 @@ class Honeycomb {
     } return c; }
     addRandomWithColor(color) { this.ensureSeed(); const a = this.randomCandidateInside(); if (!a)
         return false; const k = this.key(a); this.frontier.delete(k); const p = this.axialToPoint(a); this.place(a, color); this.renderCircle(a, p); this.updateCount(); return true; }
-    addClockWithColor(color) {
-        this.ensureSeed();
-        const hour = Math.floor(Math.random() * 12);
-        const center = Math.PI / 2 + hour * (Math.PI / 6);
-        const half = Math.PI / 12;
-        const maxTries = 200;
-        const existing = [];
-        for (const a of this.order) {
-            if (this.colorByKey.get(this.key(a)) === color)
-                existing.push(a);
-        }
-        if (existing.length) {
-            const inSector = existing.filter((a) => this.angleDiff(this.angleOfPoint(this.axialToPoint(a)), center) <= half);
-            const pool = inSector.length ? inSector : existing;
-            const order = pool.slice().sort((a, b) => this.angleDiff(this.angleOfPoint(this.axialToPoint(a)), center) - this.angleDiff(this.angleOfPoint(this.axialToPoint(b)), center));
-            for (const base of order) {
-                const candidates = [];
-                for (const d of this.dirs)
-                    candidates.push({ u: base.u + d.u, v: base.v + d.v });
-                candidates.sort((a, b) => this.angleDiff(this.angleOfPoint(this.axialToPoint(a)), center) - this.angleDiff(this.angleOfPoint(this.axialToPoint(b)), center));
-                for (const n of candidates) {
-                    const p = this.axialToPoint(n);
-                    if (!this.placed.has(this.key(n)) && this.withinArea(p)) {
-                        this.place(n, color);
-                        this.renderCircle(n, p);
-                        this.updateCount();
-                        return true;
-                    }
-                }
-            }
-        }
-        for (let i = 0; i < maxTries; i++) {
+    placeAsNewInWedge(color, center, attempts = 200) {
+        for (let i = 0; i < attempts; i++) {
             const x = Math.random() * (this.areaW - 2 * this.radius) + (-this.areaW / 2 + this.radius);
             const y = Math.random() * (this.areaH - 2 * this.radius) + (-this.areaH / 2 + this.radius);
             const p = { x, y };
-            if (this.angleDiff(this.angleOfPoint(p), center) > half)
+            if (this.angleDiff(this.angleOfPoint(p), center) > Math.PI / 12)
                 continue;
             const a = this.pointToAxialRound(p);
             const b = this.findNearestFree(a, 40, center);
@@ -363,12 +338,53 @@ class Honeycomb {
                 return true;
             }
         }
-        // final fallback: random anywhere in area
-        for (let i = 0; i < 500; i++) {
+        return false;
+    }
+    addClockWithColor(color) {
+        this.ensureSeed();
+        const hour = Math.floor(Math.random() * 12);
+        const center = Math.PI / 2 + hour * (Math.PI / 6);
+        const maxTries = 200;
+        const existing = this.nodesOfColor(color);
+        if (!existing.length) {
+            return this.placeAsNewInWedge(color, center) || false;
+        }
+        const comps = this.componentsOfColor(color);
+        const comp = comps[Math.floor(Math.random() * comps.length)];
+        // try touching neighbor biased by center
+        const candidates = [];
+        for (const base of comp) {
+            let bestDir = 0, best = Infinity;
+            for (let i = 0; i < 6; i++) {
+                const nb = { u: base.u + this.dirs[i].u, v: base.v + this.dirs[i].v };
+                const ang = this.angleOfPoint(this.axialToPoint(nb));
+                const d = this.angleDiff(ang, center);
+                if (d < best) {
+                    best = d;
+                    bestDir = i;
+                }
+            }
+            candidates.push({ u: base.u + this.dirs[bestDir].u, v: base.v + this.dirs[bestDir].v });
+        }
+        for (const n of candidates) {
+            const k = this.key(n);
+            const p = this.axialToPoint(n);
+            if (!this.placed.has(k) && this.withinArea(p)) {
+                this.place(n, color);
+                this.renderCircle(n, p);
+                this.updateCount();
+                return true;
+            }
+        }
+        // random in wedge
+        for (let i = 0; i < maxTries; i++) {
             const x = Math.random() * (this.areaW - 2 * this.radius) + (-this.areaW / 2 + this.radius);
             const y = Math.random() * (this.areaH - 2 * this.radius) + (-this.areaH / 2 + this.radius);
-            const a = this.pointToAxialRound({ x, y });
-            const b = this.findNearestFree(a, 60, center);
+            const p = { x, y };
+            if (this.angleDiff(this.angleOfPoint(p), center) > Math.PI / 12)
+                continue;
+            const a = this.pointToAxialRound(p);
+            const b = this.findNearestFree(a, 40, center);
             if (b) {
                 const pb = this.axialToPoint(b);
                 this.place(b, color);
@@ -378,6 +394,82 @@ class Honeycomb {
             }
         }
         return false;
+    }
+    addClockV2WithColor(color) {
+        this.ensureSeed();
+        const comps = this.componentsOfColor(color);
+        if (comps.length === 0) {
+            const hour = Math.floor(Math.random() * 12);
+            const center = Math.PI / 2 + hour * (Math.PI / 6);
+            return this.placeAsNewInWedge(color, center);
+        }
+        const comp = comps[Math.floor(Math.random() * comps.length)];
+        const centroid = this.centroidOfGroup(comp);
+        const hour2 = Math.floor(Math.random() * 12);
+        const center2 = Math.PI / 2 + hour2 * (Math.PI / 6);
+        const half = Math.PI / 12;
+        const inWedge = [];
+        for (const a of comp) {
+            const p = this.axialToPoint(a);
+            const rel = { x: p.x - centroid.x, y: p.y - centroid.y };
+            if (this.angleDiff(this.angleOfPoint(rel), center2) <= half)
+                inWedge.push(a);
+        }
+        let base;
+        if (inWedge.length)
+            base = inWedge[Math.floor(Math.random() * inWedge.length)];
+        else {
+            let bestA = comp[0];
+            let best = Infinity;
+            for (const a of comp) {
+                const p = this.axialToPoint(a);
+                const rel = { x: p.x - centroid.x, y: p.y - centroid.y };
+                const d = this.angleDiff(this.angleOfPoint(rel), center2);
+                if (d < best) {
+                    best = d;
+                    bestA = a;
+                }
+            }
+            base = bestA;
+        }
+        let bestDir = 0;
+        let bestD = Infinity;
+        for (let i = 0; i < 6; i++) {
+            const nb = { u: base.u + this.dirs[i].u, v: base.v + this.dirs[i].v };
+            const ang = this.angleOfPoint(this.axialToPoint(nb));
+            const d = this.angleDiff(ang, center2);
+            if (d < bestD) {
+                bestD = d;
+                bestDir = i;
+            }
+        }
+        const nb = { u: base.u + this.dirs[bestDir].u, v: base.v + this.dirs[bestDir].v };
+        const nbKey = this.key(nb);
+        const nbPt = this.axialToPoint(nb);
+        if (!this.placed.has(nbKey) && this.withinArea(nbPt)) {
+            this.place(nb, color);
+            this.renderCircle(nb, nbPt);
+            this.updateCount();
+            return true;
+        }
+        // nearest free neighbor toward centroid
+        let bestPick;
+        for (const n of this.freeNeighbors(comp)) {
+            const p = this.axialToPoint(n);
+            const dx = p.x - centroid.x, dy = p.y - centroid.y;
+            const d = dx * dx + dy * dy;
+            if (!bestPick || d < bestPick.dist)
+                bestPick = { a: n, dist: d };
+        }
+        if (bestPick) {
+            const pb = this.axialToPoint(bestPick.a);
+            this.place(bestPick.a, color);
+            this.renderCircle(bestPick.a, pb);
+            this.updateCount();
+            return true;
+        }
+        // fallback new in wedge
+        return this.placeAsNewInWedge(color, center2);
     }
     minFrontierRing() { let best = Infinity; for (const k of this.frontier) {
         const [u, v] = k.split(',').map(Number);
@@ -461,22 +553,35 @@ function main() {
     document.getElementById('btnAddSix').onclick = () => model.addSix();
     document.getElementById('btnAddRing').onclick = () => model.addRing();
     document.getElementById('btnReset').onclick = () => model.reset();
-    document.getElementById('btnAddRandomColor').onclick = () => { var _a; const strat = ((_a = document.getElementById('strategySelect')) === null || _a === void 0 ? void 0 : _a.value) || 'frontier'; if (strat === 'clock') {
-        const all = palette.colors;
-        if (!all.length)
-            return;
-        const pick = all[Math.floor(Math.random() * all.length)].value;
-        model.addClockWithColor(pick);
-    }
-    else {
-        const sel = palette.selected;
-        if (!sel)
-            return;
-        model.addRandomWithColor(sel.value);
-    } };
+    document.getElementById('btnAddRandomColor').onclick = () => {
+        var _a;
+        const strat = ((_a = document.getElementById('strategySelect')) === null || _a === void 0 ? void 0 : _a.value) || 'frontier';
+        if (strat === 'clock') {
+            const all = palette.colors;
+            if (!all.length)
+                return;
+            const pick = all[Math.floor(Math.random() * all.length)].value;
+            model.addClockWithColor(pick);
+        }
+        else if (strat === 'clock2') {
+            const all = palette.colors;
+            if (!all.length)
+                return;
+            const pick = all[Math.floor(Math.random() * all.length)].value;
+            model.addClockV2WithColor(pick);
+        }
+        else {
+            const sel = palette.selected;
+            if (!sel)
+                return;
+            model.addRandomWithColor(sel.value);
+        }
+    };
     document.getElementById('btnAddRandomAny').onclick = () => { var _a; const all = palette.colors; if (!all.length)
         return; const pick = all[Math.floor(Math.random() * all.length)].value; const strat = ((_a = document.getElementById('strategySelect')) === null || _a === void 0 ? void 0 : _a.value) || 'frontier'; if (strat === 'clock')
         model.addClockWithColor(pick);
+    else if (strat === 'clock2')
+        model.addClockV2WithColor(pick);
     else
         model.addRandomWithColor(pick); };
 }

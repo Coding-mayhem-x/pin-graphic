@@ -311,47 +311,6 @@ class Honeycomb {
     return this.placeAsNewInWedge(color, center2);
   }
 
-  addClockV3WithColor(color: string): boolean {
-    this.ensureSeed();
-    const comps = this.componentsOfColor(color);
-    if (comps.length === 0) {
-      const hour0 = Math.floor(Math.random() * 12);
-      const center0 = Math.PI/2 + hour0*(Math.PI/6);
-      return this.placeAsNewInWedge(color, center0);
-    }
-    const freesPerComp: { comp: Axial[]; frees: Axial[]; centroid: Point }[] = [];
-    const union = new Map<string, Axial>();
-    for (const comp of comps) {
-      const centroid = this.centroidOfGroup(comp);
-      const frees = this.freeNeighbors(comp);
-      const uniq: Axial[] = [];
-      const seen = new Set<string>();
-      for (const f of frees) { const k=this.key(f); if (seen.has(k)) continue; seen.add(k); uniq.push(f); if(!union.has(k)) union.set(k,f); }
-      freesPerComp.push({ comp, frees: uniq, centroid });
-    }
-    if (union.size === 1) {
-      const only = Array.from(union.values())[0]; const p = this.axialToPoint(only); this.place(only,color); this.renderCircle(only,p); this.updateCount(); return true;
-    }
-    const candidates = freesPerComp.filter(e => e.frees.length > 0);
-    const hour = Math.floor(Math.random() * 12);
-    const center = Math.PI/2 + hour*(Math.PI/6);
-    if (candidates.length) {
-      let minCount = Math.min.apply(null, candidates.map(e => e.frees.length));
-      const scarce = candidates.filter(e => e.frees.length === minCount);
-      let pick = scarce[0]; let best = Infinity;
-      for (const e of scarce) { const ang=this.angleOfPoint(e.centroid); const d=this.angleDiff(ang,center); if(d<best){ best=d; pick=e; } }
-      let bestNode: Axial | null = null; let bestScore = Infinity;
-      for (const n of pick.frees) {
-        const pt=this.axialToPoint(n); const dAng=this.angleDiff(this.angleOfPoint(pt),center);
-        const dx=pt.x-pick.centroid.x, dy=pt.y-pick.centroid.y; const d2=dx*dx+dy*dy;
-        const score = dAng*10 + d2/(this.radius*this.radius+1);
-        if(score<bestScore){ bestScore=score; bestNode=n; }
-      }
-      if(bestNode){ const pb=this.axialToPoint(bestNode); this.place(bestNode,color); this.renderCircle(bestNode,pb); this.updateCount(); return true; }
-    }
-    return this.placeAsNewInWedge(color, center);
-  }
-
   private minFrontierRing(): number { let best=Infinity; for(const k of this.frontier){ const [u,v]=k.split(',').map(Number); const r=this.ring({u,v}); if(r<best) best=r; } return best; }
 
   reset() { this.placed.clear(); this.frontier.clear(); this.order.length = 0; this.colorByKey.clear(); this.gCircles.replaceChildren(); this.place({ u: 0, v: 0 }); const p0 = this.axialToPoint({ u: 0, v: 0 }); this.renderCircle({ u: 0, v: 0 }, p0); this.updateCount(); }
@@ -386,16 +345,12 @@ function main() {
     const strat = (document.getElementById('strategySelect') as HTMLSelectElement)?.value || 'frontier';
     if (strat === 'clock') { const all = palette.colors; if (!all.length) return; const pick = all[Math.floor(Math.random() * all.length)].value; model.addClockWithColor(pick); }
     else if (strat === 'clock2') { const all = palette.colors; if (!all.length) return; const pick = all[Math.floor(Math.random() * all.length)].value; model.addClockV2WithColor(pick); }
-    else if (strat === 'clock3') { const all = palette.colors; if (!all.length) return; const pick = all[Math.floor(Math.random() * all.length)].value; model.addClockV3WithColor(pick); }
     else { const sel = palette.selected; if (!sel) return; model.addRandomWithColor(sel.value); }
   };
-  (document.getElementById('btnAddRandomAny') as HTMLButtonElement).onclick = () => { const all = palette.colors; if (!all.length) return; const pick = all[Math.floor(Math.random() * all.length)].value; const strat = (document.getElementById('strategySelect') as HTMLSelectElement)?.value || 'frontier'; if (strat === 'clock') model.addClockWithColor(pick); else if (strat === 'clock2') model.addClockV2WithColor(pick); else if (strat === 'clock3') model.addClockV3WithColor(pick); else model.addRandomWithColor(pick); };
+  (document.getElementById('btnAddRandomAny') as HTMLButtonElement).onclick = () => { const all = palette.colors; if (!all.length) return; const pick = all[Math.floor(Math.random() * all.length)].value; const strat = (document.getElementById('strategySelect') as HTMLSelectElement)?.value || 'frontier'; if (strat === 'clock') model.addClockWithColor(pick); else if (strat === 'clock2') model.addClockV2WithColor(pick); else model.addRandomWithColor(pick); };
 }
 
 document.addEventListener('DOMContentLoaded', main);
-
-
-
 
 
 

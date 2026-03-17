@@ -133,6 +133,7 @@ class Honeycomb {
   private frontier: Set<string> = new Set();
   private order: Axial[] = [];
   private colorByKey: Map<string, string> = new Map();
+  private sizeFactorByKey: Map<string, number> = new Map();
 
   radius = 20; diameter = 40;
   areaDiamW = 90; areaDiamH = 60; areaW = 0; areaH = 0;
@@ -363,14 +364,14 @@ class Honeycomb {
     return this.placeAsNewInWedge(color, center);
   }private minFrontierRing(): number { let best=Infinity; for(const k of this.frontier){ const [u,v]=k.split(',').map(Number); const r=this.ring({u,v}); if(r<best) best=r; } return best; }
 
-  reset() { this.placed.clear(); this.frontier.clear(); this.order.length = 0; this.colorByKey.clear(); this.gCircles.replaceChildren(); this.place({ u: 0, v: 0 }); const p0 = this.axialToPoint({ u: 0, v: 0 }); this.renderCircle({ u: 0, v: 0 }, p0); this.updateCount(); }
+  reset() { this.placed.clear(); this.frontier.clear(); this.order.length = 0; this.colorByKey.clear(); this.gCircles.replaceChildren(); this.sizeFactorByKey.clear(); this.place({ u: 0, v: 0 }); const p0 = this.axialToPoint({ u: 0, v: 0 }); this.renderCircle({ u: 0, v: 0 }, p0); this.updateCount(); }
 
   private getSvgBackgroundRgb(): RGB { const cs = getComputedStyle(this.svg); const bg = (cs as any).backgroundColor || '#10131a'; return parseCssColorToRgb(String(bg)) || { r: 16, g: 19, b: 26 }; }
 
   private renderAll() { this.gCircles.replaceChildren(); for (const a of this.order) { const p = this.axialToPoint(a); if (this.withinArea(p)) this.renderCircle(a, p); } }
 
   private renderCircle(a: Axial, p: Point) {
-    const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle'); c.setAttribute('class', 'node'); c.setAttribute('cx', String(p.x)); c.setAttribute('cy', String(p.y)); c.setAttribute('r', String(this.radius)); c.setAttribute('data-key', this.key(a));
+    const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle'); c.setAttribute('class', 'node'); c.setAttribute('cx', String(p.x)); c.setAttribute('cy', String(p.y)); { const rk=this.key(a); const rf=this.sizeFactorByKey.get(rk) ?? 1; c.setAttribute('r', String(Math.max(1, Math.round(this.radius * rf)))) }; c.setAttribute('data-key', this.key(a));
     const fill = this.colorByKey.get(this.key(a)); if (fill) (c as any).style.fill = fill;
     const bgRgb = this.getSvgBackgroundRgb(); const fillRgb = parseCssColorToRgb(fill || getComputedStyle(c).fill || '#60a5fa')!; const ratio = contrastRatio(fillRgb, bgRgb);
     if (isVeryDark(fillRgb)) {
@@ -382,6 +383,12 @@ class Honeycomb {
     else { c.removeAttribute('stroke'); c.removeAttribute('stroke-width'); c.removeAttribute('stroke-opacity'); this.gCircles.appendChild(c); }
   }
 
+  applyHalftoneFromSampler(s: ImageSampler, fit: 'cover'|'contain'|'fill'){
+    this.sizeFactorByKey.clear();
+    for (const a of this.order){ const p=this.axialToPoint(a); const rgb = s.sampleAt(p, this.areaW, this.areaH, fit) || {r:16,g:19,b:26}; const L = relLuminance(rgb); const f = Math.max(0.35, Math.min(1.0, 1.0 - L)); this.sizeFactorByKey.set(this.key(a), f); }
+    this.renderAll();
+  }
+  clearHalftone(){ this.sizeFactorByKey.clear(); this.renderAll(); }
   private updateCount() { this.countLabel.textContent = String(this.order.length); }
 }
 
@@ -421,6 +428,10 @@ function main() {
       o.colorByKey.set(o.key(a), best);
     }
     o.renderAll();
+    // Apply fill mode
+    const fillSel = document.getElementById('fillMode') as HTMLSelectElement | null;
+    const mode = (fillSel?.value || 'v1');
+    if (mode === 'v2') { (model as any).applyHalftoneFromSampler(imgSampler, fit); } else { (model as any).clearHalftone(); }
   };
 }
 

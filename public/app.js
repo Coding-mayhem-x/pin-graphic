@@ -141,6 +141,7 @@ class Honeycomb {
         this.frontier = new Set();
         this.order = [];
         this.colorByKey = new Map();
+        this.sizeFactorByKey = new Map();
         this.radius = 20;
         this.diameter = 40;
         this.areaDiamW = 90;
@@ -630,7 +631,7 @@ class Honeycomb {
         if (r < best)
             best = r;
     } return best; }
-    reset() { this.placed.clear(); this.frontier.clear(); this.order.length = 0; this.colorByKey.clear(); this.gCircles.replaceChildren(); this.place({ u: 0, v: 0 }); const p0 = this.axialToPoint({ u: 0, v: 0 }); this.renderCircle({ u: 0, v: 0 }, p0); this.updateCount(); }
+    reset() { this.placed.clear(); this.frontier.clear(); this.order.length = 0; this.colorByKey.clear(); this.gCircles.replaceChildren(); this.sizeFactorByKey.clear(); this.place({ u: 0, v: 0 }); const p0 = this.axialToPoint({ u: 0, v: 0 }); this.renderCircle({ u: 0, v: 0 }, p0); this.updateCount(); }
     getSvgBackgroundRgb() { const cs = getComputedStyle(this.svg); const bg = cs.backgroundColor || '#10131a'; return parseCssColorToRgb(String(bg)) || { r: 16, g: 19, b: 26 }; }
     renderAll() { this.gCircles.replaceChildren(); for (const a of this.order) {
         const p = this.axialToPoint(a);
@@ -638,11 +639,17 @@ class Honeycomb {
             this.renderCircle(a, p);
     } }
     renderCircle(a, p) {
+        var _a;
         const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
         c.setAttribute('class', 'node');
         c.setAttribute('cx', String(p.x));
         c.setAttribute('cy', String(p.y));
-        c.setAttribute('r', String(this.radius));
+        {
+            const rk = this.key(a);
+            const rf = (_a = this.sizeFactorByKey.get(rk)) !== null && _a !== void 0 ? _a : 1;
+            c.setAttribute('r', String(Math.max(1, Math.round(this.radius * rf))));
+        }
+        ;
         c.setAttribute('data-key', this.key(a));
         const fill = this.colorByKey.get(this.key(a));
         if (fill)
@@ -694,6 +701,18 @@ class Honeycomb {
             this.gCircles.appendChild(c);
         }
     }
+    applyHalftoneFromSampler(s, fit) {
+        this.sizeFactorByKey.clear();
+        for (const a of this.order) {
+            const p = this.axialToPoint(a);
+            const rgb = s.sampleAt(p, this.areaW, this.areaH, fit) || { r: 16, g: 19, b: 26 };
+            const L = relLuminance(rgb);
+            const f = Math.max(0.35, Math.min(1.0, 1.0 - L));
+            this.sizeFactorByKey.set(this.key(a), f);
+        }
+        this.renderAll();
+    }
+    clearHalftone() { this.sizeFactorByKey.clear(); this.renderAll(); }
     updateCount() { this.countLabel.textContent = String(this.order.length); }
 }
 function main() {
@@ -812,6 +831,15 @@ function main() {
                 o.colorByKey.set(o.key(a), best);
             }
             o.renderAll();
+            // Apply fill mode
+            const fillSel = document.getElementById('fillMode');
+            const mode = ((fillSel === null || fillSel === void 0 ? void 0 : fillSel.value) || 'v1');
+            if (mode === 'v2') {
+                model.applyHalftoneFromSampler(imgSampler, fit);
+            }
+            else {
+                model.clearHalftone();
+            }
         };
 }
 document.addEventListener('DOMContentLoaded', main);

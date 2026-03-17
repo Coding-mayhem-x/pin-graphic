@@ -233,21 +233,33 @@ class Honeycomb {
         d -= 2 * Math.PI; while (d < -Math.PI)
         d += 2 * Math.PI; return Math.abs(d); }
     addAx(a, b, k = 1) { return { u: a.u + b.u * k, v: a.v + b.v * k }; }
-    findNearestFree(target, maxRing = 60) {
-        const k0 = this.key(target);
-        const p0 = this.axialToPoint(target);
-        if (!this.placed.has(k0) && this.withinArea(p0))
+    findNearestFree(target, maxRing = 60, biasAngle) {
+        const isFree = (a) => { const k = this.key(a); const p = this.axialToPoint(a); return !this.placed.has(k) && this.withinArea(p); };
+        if (isFree(target))
             return target;
+        // choose starting side based on bias angle if provided
+        const dirAngles = this.dirs.map(d => this.angleOfPoint(this.axialToPoint({ u: target.u + d.u, v: target.v + d.v })));
+        let startSide = 0;
+        if (typeof biasAngle === 'number') {
+            let best = Infinity;
+            let idx = 0;
+            for (let i = 0; i < 6; i++) {
+                const diff = this.angleDiff(dirAngles[i], biasAngle);
+                if (diff < best) {
+                    best = diff;
+                    idx = i;
+                }
+            }
+            startSide = (idx + 5) % 6; // start one side "behind" the best pointing dir
+        }
         for (let r = 1; r <= maxRing; r++) {
-            let q = this.addAx(target, this.dirs[4], r);
-            for (let side = 0; side < 6; side++) {
+            let q = this.addAx(target, this.dirs[startSide], r);
+            for (let s = 0; s < 6; s++) {
+                const side = (startSide + s) % 6;
                 for (let step = 0; step < r; step++) {
-                    const k = this.key(q);
-                    const p = this.axialToPoint(q);
-                    if (!this.placed.has(k) && this.withinArea(p))
+                    if (isFree(q))
                         return q;
-                    const dir = this.dirs[side];
-                    q = this.addAx(q, dir, 1);
+                    q = this.addAx(q, this.dirs[(side + 1) % 6], 1);
                 }
             }
         }
@@ -342,7 +354,7 @@ class Honeycomb {
             if (this.angleDiff(this.angleOfPoint(p), center) > half)
                 continue;
             const a = this.pointToAxialRound(p);
-            const b = this.findNearestFree(a, 40);
+            const b = this.findNearestFree(a, 40, center);
             if (b) {
                 const pb = this.axialToPoint(b);
                 this.place(b, color);
@@ -356,7 +368,7 @@ class Honeycomb {
             const x = Math.random() * (this.areaW - 2 * this.radius) + (-this.areaW / 2 + this.radius);
             const y = Math.random() * (this.areaH - 2 * this.radius) + (-this.areaH / 2 + this.radius);
             const a = this.pointToAxialRound({ x, y });
-            const b = this.findNearestFree(a, 60);
+            const b = this.findNearestFree(a, 60, center);
             if (b) {
                 const pb = this.axialToPoint(b);
                 this.place(b, color);

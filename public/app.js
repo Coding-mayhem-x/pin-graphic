@@ -154,18 +154,12 @@ class Honeycomb {
         this.svg.append(this.rect, this.gCircles);
         host.innerHTML = '';
         host.appendChild(this.svg);
-        n;
         this.preview = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        n;
         this.preview.setAttribute('class', 'preview');
-        n;
         this.preview.setAttribute('r', String(this.radius));
-        n;
         this.preview.setAttribute('cx', '0');
         this.preview.setAttribute('cy', '0');
-        n;
         this.preview.style.pointerEvents = 'none';
-        n;
         this.svg.appendChild(this.preview);
         this.diameterLabel = document.getElementById('diameterPx');
         this.countLabel = document.getElementById('count');

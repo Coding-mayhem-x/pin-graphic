@@ -1,4 +1,4 @@
-/* Clean TypeScript build for Honeycomb Circles Simulator */
+﻿/* Clean TypeScript build for Honeycomb Circles Simulator */
 
 type Axial = { u: number; v: number };
 type Point = { x: number; y: number };
@@ -125,7 +125,10 @@ class PaletteManager {
   }
 }
 
-class Honeycomb {\n  private preview: SVGCircleElement;\n  private hoverAxial: Axial | null = null;\n  private getColor: (() => string | undefined) | null = null;
+class Honeycomb {
+  private preview: SVGCircleElement;
+  private hoverAxial: Axial | null = null;
+  private getColor: (() => string | undefined) | null = null;
   private placed: Set<string> = new Set();
   private frontier: Set<string> = new Set();
   private order: Axial[] = [];
@@ -144,7 +147,13 @@ class Honeycomb {\n  private preview: SVGCircleElement;\n  private hoverAxial: A
     this.rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
     this.gCircles = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     this.svg.append(this.rect, this.gCircles); host.innerHTML = ''; host.appendChild(this.svg);
-    \n    this.preview = document.createElementNS('http://www.w3.org/2000/svg','circle');\n    this.preview.setAttribute('class','preview');\n    this.preview.setAttribute('r', String(this.radius));\n    this.preview.setAttribute('cx','0'); this.preview.setAttribute('cy','0');\n    this.preview.style.pointerEvents = 'none';\n    this.svg.appendChild(this.preview);
+    
+    this.preview = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    this.preview.setAttribute('class','preview');
+    this.preview.setAttribute('r', String(this.radius));
+    this.preview.setAttribute('cx','0'); this.preview.setAttribute('cy','0');
+    this.preview.style.pointerEvents = 'none';
+    this.svg.appendChild(this.preview);
     this.diameterLabel = document.getElementById('diameterPx')!; this.countLabel = document.getElementById('count')!;
     this.reset(); const ro = new ResizeObserver(() => this.resizeToHost(host)); ro.observe(host); this.resizeToHost(host);
   }
@@ -193,7 +202,8 @@ class Honeycomb {\n  private preview: SVGCircleElement;\n  private hoverAxial: A
       }
     }
     return undefined;
-  }\n  setColorProvider(fn: () => string | undefined){ this.getColor = fn; }
+  }
+  setColorProvider(fn: () => string | undefined){ this.getColor = fn; }
   enableManual(){
     const onMove = (ev: MouseEvent) => this.handlePointer(ev);
     const onClick = (ev: MouseEvent) => this.handleClick(ev);
@@ -232,7 +242,8 @@ class Honeycomb {\n  private preview: SVGCircleElement;\n  private hoverAxial: A
     const a = this.pointToAxialRound(p);
     const b = this.findNearestFree(a, 40);
     return b || undefined;
-  }\n  resizeToHost(host: HTMLElement) {
+  }
+  resizeToHost(host: HTMLElement) {
     const w = host.clientWidth, h = host.clientHeight; const d1 = Math.floor(w / this.areaDiamW), d2 = Math.floor(h / this.areaDiamH); const d = Math.max(2, Math.min(d1, d2));
     this.diameter = d; this.radius = Math.max(1, Math.floor(this.diameter / 2)); this.areaW = this.diameter * this.areaDiamW; this.areaH = this.diameter * this.areaDiamH;
     this.diameterLabel.textContent = String(this.diameter);

@@ -124,7 +124,7 @@ class PaletteManager {
       { id: 'c7', name: 'Brown', value: '#8b5a2b' },
       { id: 'c8', name: 'Grass Green', value: '#22c55e' },
       { id: 'c9', name: 'Dark Green', value: '#14532d' },
-      { id: 'c10', name: 'Yellow', value: '#f59e0b' },
+      { id: 'c10', name: 'Yellow', value: '#ffea00' },
       { id: 'c11', name: 'Orange', value: '#f97316' },
     ];
     this.renderList();
@@ -193,53 +193,62 @@ class PaletteManager {
       this.selectEl.value = found.id;
     }
   }
-}class Honeycomb {
-  private placed: Set<string> = new Set();
-  private frontier: Set<string> = new Set();
-  private order: Axial[] = [];
-  private colorByKey: Map<string, string> = new Map();
+}
+  private angleOfPoint(p: Point): number { return Math.atan2(p.y, p.x); }
+  private angleDiff(a: number, b: number): number { let d=a-b; while(d>Math.PI) d-=2*Math.PI; while(d<-Math.PI) d+=2*Math.PI; return Math.abs(d); }
+  private pointToAxialRound(p: Point): Axial {
+    const R = this.radius; const dx = Math.sqrt(3)*R;
+    const uf = p.x / dx; const vf = (p.y - R*uf) / (2*R);
+    // cube rounding
+    let x = uf, y = vf, z = -uf - vf;
+    let rx = Math.round(x), ry = Math.round(y), rz = Math.round(z);
+    const x_diff = Math.abs(rx - x), y_diff = Math.abs(ry - y), z_diff = Math.abs(rz - z);
+    if (x_diff > y_diff && x_diff > z_diff) { rx = -ry - rz; }
+    else if (y_diff > z_diff) { ry = -rx - rz; }
+    else { rz = -rx - ry; }
+    return { u: rx, v: ry };
+  }
+  addClockWithColor(color: string): boolean {
+    this.ensureSeed();
+    const hour = Math.floor(Math.random()*12); // 0..11
+    const center = Math.PI/2 + hour*(Math.PI/6); // 12 o'clock up
+    const half = Math.PI/12; // 15° half-width
+    const maxTries = 200;
 
-  radius = 20; // px, will be recomputed
-  diameter = 40;
-  areaDiamW = 90; // in diameters
-  areaDiamH = 60; // in diameters
-  areaW = 0; // px, computed
-  areaH = 0; // px, computed
+    // if color exists, try place near an existing of same color in that wedge
+    const existing: Axial[] = [];
+    for (const a of this.order) { if (this.colorByKey.get(this.key(a)) === color) existing.push(a); }
+    if (existing.length) {
+      // pick those inside sector if possible
+      const inSector = existing.filter(a => this.angleDiff(this.angleOfPoint(this.axialToPoint(a)), center) <= half);
+      const base = (inSector.length ? inSector : existing)[Math.floor(Math.random()* (inSector.length?inSector.length:existing.length))];
+      // try neighbors around base, bias to sector direction
+      const candidates: Axial[] = [];
+      for (const d of this.dirs) { const n={u:base.u+d.u, v:base.v+d.v}; candidates.push(n); }
+      candidates.sort((a,b)=> this.angleDiff(this.angleOfPoint(this.axialToPoint(a)), center) - this.angleDiff(this.angleOfPoint(this.axialToPoint(b)), center));
+      for (const n of candidates) {
+        const k=this.key(n); const p=this.axialToPoint(n);
+        if (!this.placed.has(k) && this.withinArea(p)) {
+          this.place(n, color); this.renderCircle(n,p); this.updateCount(); return true;
+        }
+      }
+      // fallthrough to random within sector
+    }
 
-  private svg: SVGSVGElement;
-  private gCircles: SVGGElement;
-  private rect: SVGRectElement;
-  private diameterLabel: HTMLElement;
-  private countLabel: HTMLElement;
-
-  private dirs: Axial[] = [
-    { u: 0, v: 1 },
-    { u: 1, v: 0 },
-    { u: 1, v: -1 },
-    { u: 0, v: -1 },
-    { u: -1, v: 0 },
-    { u: -1, v: 1 },
-  ];
-
-  constructor(host: HTMLElement) {
-    this.svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    this.rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-    this.gCircles = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-
-    this.svg.append(this.rect, this.gCircles);
-    host.innerHTML = '';
-    host.appendChild(this.svg);
-
-    this.rect.setAttribute('class', 'area');
-
-    this.diameterLabel = document.getElementById('diameterPx')!;
-    this.countLabel = document.getElementById('count')!;
-
-    this.reset();
-
-    const ro = new ResizeObserver(() => this.resizeToHost(host));
-    ro.observe(host);
-    this.resizeToHost(host);
+    // random sampling within wedge, round to lattice
+    for (let i=0;i<maxTries;i++){
+      const x = (Math.random()* (this.areaW - 2*this.radius)) + (-this.areaW/2 + this.radius);
+      const y = (Math.random()* (this.areaH - 2*this.radius)) + (-this.areaH/2 + this.radius);
+      const p: Point = {x,y};
+      if (this.angleDiff(this.angleOfPoint(p), center) > half) continue;
+      const a = this.pointToAxialRound(p);
+      const k = this.key(a); const pc=this.axialToPoint(a);
+      if (!this.placed.has(k) && this.withinArea(pc)) {
+        this.place(a, color); this.renderCircle(a, pc); this.updateCount(); return true;
+      }
+    }
+    // fallback to frontier random
+    return this.addRandomWithColor(color);
   }
 
   private key(a: Axial): string { return `${a.u},${a.v}`; }
@@ -516,6 +525,7 @@ function main() {
 }
 
 document.addEventListener('DOMContentLoaded', main);
+
 
 
 

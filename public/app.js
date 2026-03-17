@@ -1,4 +1,4 @@
-﻿// Clean build: SVG honeycomb app with palette and contrast-aware halo
+// Clean build: SVG honeycomb app with palette and contrast-aware halo
 (function(){
   const LS_PALETTE_KEY = 'honeycomb.palette.v1';
 
@@ -72,7 +72,7 @@
         {id:'c7', name:'Brown', value:'#8b5a2b'},
         {id:'c8', name:'Grass Green', value:'#22c55e'},
         {id:'c9', name:'Dark Green', value:'#14532d'},
-        {id:'c10', name:'Yellow', value:'#f59e0b'},
+        {id:'c10', name:'Yellow', value:'#ffea00'},
         {id:'c11', name:'Orange', value:'#f97316'},
       ];
       this.renderList();
@@ -98,11 +98,13 @@
     }
   }
 
-  class Honeycomb{
-    constructor(host){
-      this.placed=new Set(); this.frontier=new Set(); this.order=[]; this.colorByKey=new Map();
-      this.radius=20; this.diameter=40; this.areaDiamW=90; this.areaDiamH=60; this.areaW=0; this.areaH=0;
-      this.dirs=[{u:0,v:1},{u:1,v:0},{u:1,v:-1},{u:0,v:-1},{u:-1,v:0},{u:-1,v:1}];
+  
+    angleOfPoint(p){ return Math.atan2(p.y,p.x); }
+    angleDiff(a,b){ let d=a-b; while(d>Math.PI) d-=2*Math.PI; while(d<-Math.PI) d+=2*Math.PI; return Math.abs(d); }
+    pointToAxialRound(p){ const R=this.radius; const dx=Math.sqrt(3)*R; const uf=p.x/dx; const vf=(p.y - R*uf)/(2*R); let x=uf,y=vf,z=-uf-vf; let rx=Math.round(x), ry=Math.round(y), rz=Math.round(z); const xd=Math.abs(rx-x), yd=Math.abs(ry-y), zd=Math.abs(rz-z); if(xd>yd && xd>zd){ rx=-ry-rz; } else if(yd>zd){ ry=-rx-rz; } else { rz=-rx-ry; } return {u:rx,v:ry}; }
+    addClockWithColor(color){ this.ensureSeed(); const hour=Math.floor(Math.random()*12); const center=Math.PI/2 + hour*(Math.PI/6); const half=Math.PI/12; const maxTries=200; const existing=[]; for(const a of this.order){ if(this.colorByKey.get(this.key(a))===color) existing.push(a); }
+      if(existing.length){ const inSector=existing.filter(a=> this.angleDiff(this.angleOfPoint(this.axialToPoint(a)),center) <= half); const pool=inSector.length?inSector:existing; const base=pool[Math.floor(Math.random()*pool.length)]; const candidates=[]; for(const d of this.dirs){ candidates.push({u:base.u+d.u, v:base.v+d.v}); } candidates.sort((a,b)=> this.angleDiff(this.angleOfPoint(this.axialToPoint(a)),center) - this.angleDiff(this.angleOfPoint(this.axialToPoint(b)),center)); for(const n of candidates){ const k=this.key(n); const p=this.axialToPoint(n); if(!this.placed.has(k) && this.withinArea(p)){ this.place(n,color); this.renderCircle(n,p); this.updateCount(); return true; } } }
+      for(let i=0;i<maxTries;i++){ const x=(Math.random()*(this.areaW-2*this.radius)) + (-this.areaW/2 + this.radius); const y=(Math.random()*(this.areaH-2*this.radius)) + (-this.areaH/2 + this.radius); const p={x,y}; if(this.angleDiff(this.angleOfPoint(p),center)>half) continue; const a=this.pointToAxialRound(p); const k=this.key(a); const pc=this.axialToPoint(a); if(!this.placed.has(k) && this.withinArea(pc)){ this.place(a,color); this.renderCircle(a,pc); this.updateCount(); return true; } } return this.addRandomWithColor(color); },{u:1,v:0},{u:1,v:-1},{u:0,v:-1},{u:-1,v:0},{u:-1,v:1}];
       this.svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
       this.rect=document.createElementNS('http://www.w3.org/2000/svg','rect');
       this.gCircles=document.createElementNS('http://www.w3.org/2000/svg','g');
@@ -160,9 +162,10 @@
     document.getElementById('btnAddSix').onclick=()=>model.addSix();
     document.getElementById('btnAddRing').onclick=()=>model.addRing();
     document.getElementById('btnReset').onclick=()=>model.reset();
-    document.getElementById('btnAddRandomColor').onclick=()=>{ const sel=palette.selected; if(!sel) return; model.addRandomWithColor(sel.value); };
-    document.getElementById('btnAddRandomAny').onclick=()=>{ const all=palette.colors; if(!all.length) return; const pick=all[Math.floor(Math.random()*all.length)].value; model.addRandomWithColor(pick); };
+    document.getElementById('btnAddRandomColor').onclick=()=>{ const sel=palette.selected; if(!sel) return; const strat=document.getElementById('strategySelect').value; if(strat==='clock') model.addClockWithColor(sel.value); else model.addRandomWithColor(sel.value); };
+    document.getElementById('btnAddRandomAny').onclick=()=>{ const all=palette.colors; if(!all.length) return; const pick=all[Math.floor(Math.random()*all.length)].value; const strat=document.getElementById('strategySelect').value; if(strat==='clock') model.addClockWithColor(pick); else model.addRandomWithColor(pick); };
   }
 
   document.addEventListener('DOMContentLoaded', main);
 })();
+

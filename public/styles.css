@@ -17,10 +17,11 @@ svg{width:100%;height:100%;display:block;background:#10131a}
 .area{fill:#0b0d12;stroke:var(--area);stroke-width:2}
 circle.node{fill:var(--circle);stroke:var(--circle-edge);stroke-width:1}.palette{margin-top:16px;border-top:1px solid var(--border);padding-top:12px}
 .palette h2{margin:0 0 8px 0;font-size:14px;color:#cfd3dc}
-.palette-controls{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+.palette-controls{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px}
 .palette-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
 .palette-list{display:grid;gap:6px;max-height:240px;overflow:auto;padding-right:4px}
 .palette-row{display:grid;grid-template-columns:28px 1fr auto;gap:8px;align-items:center}
 .palette-row input[type="color"]{width:28px;height:28px;border:1px solid var(--border);background:#1a1f2a;border-radius:4px;padding:0}
 .palette-row input[type="text"]{width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:#1a1f2a;color:var(--text)}
 .palette-row button{padding:6px 8px}
+

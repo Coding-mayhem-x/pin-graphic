@@ -35,3 +35,18 @@ circle.node{fill:var(--circle);stroke:var(--circle-edge);stroke-width:1}.palette
 /* Improve symbol fallback fonts */
 body{font-family: system-ui, Segoe UI, Roboto, Arial, "Segoe UI Symbol", "DejaVu Sans", "Noto Sans Symbols 2", "Noto Sans Symbols", sans-serif}
 circle.preview{fill:#fff;fill-opacity:0.25;stroke:#fff;stroke-dasharray:4 3;stroke-opacity:0.8}
+/* Sidebar bookmark toggle and collapsible layout */
+#app.collapsed{ grid-template-columns: 56px 1fr; }
+.side{ position: relative; }
+.bookmark{ position:absolute; top:8px; right:-12px; width:24px; height:48px; background:var(--accent); color:#0b0d12; border:0; border-radius:0 6px 6px 0; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,.3); font-weight:700 }
+#app.collapsed .side-content{ display:none; }
+#app.collapsed .bookmark{ right:auto; left:8px; }
+
+/* Diagnostics */
+.diag{ margin-top:16px; border-top:1px solid var(--border); padding-top:12px }
+.diag h2{ margin:0 0 8px 0; font-size:14px; color:#cfd3dc }
+.diag-controls{ display:grid; grid-template-columns:1fr; gap:8px; margin-bottom:8px }
+.diag-output{ display:grid; gap:6px; max-height:160px; overflow:auto; padding-right:4px }
+.diag-row{ display:grid; grid-template-columns:20px 1fr auto; align-items:center; gap:8px }
+.diag-row .swatch{ width:20px; height:20px; border:1px solid var(--border); border-radius:4px }
+.diag-row .count{ color:#cfd3dc }

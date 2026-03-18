@@ -1140,6 +1140,43 @@ function main() {
             }
         };
 }
+// UI: sidebar collapse toggle and diagnostics
+const appRoot = document.getElementById('app');
+const sideToggle = document.getElementById('sideToggle');
+if (appRoot && sideToggle) {
+    const LS_SIDE = 'ui.side.collapsed';
+    try {
+        if (localStorage.getItem(LS_SIDE) === '1')
+            appRoot.classList.add('collapsed');
+    }
+    catch { }
+    sideToggle.onclick = () => {
+        appRoot.classList.toggle('collapsed');
+        try {
+            localStorage.setItem(LS_SIDE, appRoot.classList.contains('collapsed') ? '1' : '0');
+        }
+        catch { }
+    };
+}
+const btnDiag = document.getElementById('btnDiagCounts');
+const diagOut = document.getElementById('diagOutput');
+if (btnDiag && diagOut) {
+    btnDiag.onclick = () => {
+        var _a;
+        const counts = new Map();
+        const total = ((_a = model.order) === null || _a === void 0 ? void 0 : _a.length) || 0;
+        const map = model.colorByKey;
+        if (map && map.forEach) {
+            map.forEach((col) => { counts.set(col, (counts.get(col) || 0) + 1); });
+        }
+        const rows = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
+        const html = rows.map(([col, c]) => {
+            const pct = total ? Math.round(1000 * c / total) / 10 : 0;
+            return `<div class="diag-row"><span class="swatch" style="background:${col}"></span><span>${col}</span><span class="count">${c} (${pct}%)</span></div>`;
+        }).join('');
+        diagOut.innerHTML = html || '<div class="diag-row">No colored circles yet.</div>';
+    };
+}
 document.addEventListener('DOMContentLoaded', main);
 function nearestTwoFromPalette(rgb, palette) {
     let bestA = '#000000', bestB = '#000000';

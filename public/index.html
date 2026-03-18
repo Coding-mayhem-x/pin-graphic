@@ -9,7 +9,9 @@
 <body>
   
   <div id="app">
-    <aside class="side">\n    <button id="sideToggle" class="bookmark" title="Toggle sidebar" aria-label="Toggle sidebar">☰</button>\n    <div class="side-content">
+    <aside class="side">
+    <button id="sideToggle" class="bookmark" title="Toggle sidebar" aria-label="Toggle sidebar">☰</button>
+    <div class="side-content">
       <h1>Kontrola</h1>
       <div class="panel">
         <button id="btnAddOne">Add one</button>
@@ -70,7 +72,15 @@
           <button id="btnMapNow">Map Now</button>
         </div>
       </section>
-    </section></section>    <section class="diag">\n      <h2>Diagnostics</h2>\n      <div class="diag-controls">\n        <button id="btnDiagCounts" title="Count circles by color">Compute Counts</button>\n      </div>\n      <div id="diagOutput" class="diag-output" aria-live="polite"></div>\n    </section>\n    </div>\n  </aside>
+    </section></section>    <details class="diag" id="diagDetails"><summary>Diagnostics</summary>
+      <h2>Diagnostics</h2>
+      <div class="diag-controls">
+        <button id="btnDiagCounts" title="Count circles by color">Compute Counts</button>
+      </div>
+      <div id="diagOutput" class="diag-output" aria-live="polite"></div>
+    </details>
+    </div>
+  </aside>
     <main class="stage">
       <div id="svgHost" class="host" aria-label="obszar rysowania"></div>
     </main>
@@ -99,6 +109,7 @@
   </script>
 </body>
 </html>
+
 
 
 

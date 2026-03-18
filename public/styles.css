@@ -50,3 +50,7 @@ circle.preview{fill:#fff;fill-opacity:0.25;stroke:#fff;stroke-dasharray:4 3;stro
 .diag-row{ display:grid; grid-template-columns:20px 1fr auto; align-items:center; gap:8px }
 .diag-row .swatch{ width:20px; height:20px; border:1px solid var(--border); border-radius:4px }
 .diag-row .count{ color:#cfd3dc }
+/* Details styling for Diagnostics */
+details.diag{ margin-top:16px; border-top:1px solid var(--border); padding-top:12px }
+details.diag > summary{ cursor:pointer; list-style:none; font-size:14px; color:#cfd3dc; margin-bottom:8px }
+details.diag > summary::-webkit-details-marker{ display:none }

@@ -157,7 +157,36 @@ class Honeycomb {
     this.preview.style.pointerEvents = 'none';
     this.svg.appendChild(this.preview);
     this.diameterLabel = document.getElementById('diameterPx')!; this.countLabel = document.getElementById('count')!;
-    this.reset(); const ro = new ResizeObserver(() => this.resizeToHost(host)); ro.observe(host); this.resizeToHost(host);
+    this.  // CA step using per-color rules from CARules
+  addCAPaletteStep(palette: ColorEntry[], selectedId?: string): boolean {
+    this.ensureSeed();
+    let best: { a: Axial; score: number; color: string } | null = null;
+    const ruleMap = (window as any).CARules ? (window as any).CARules.getRulesForPalette(palette as any) : {};
+    for (const k of this.frontier) {
+      const parts = k.split(','); const a = { u: parseInt(parts[0],10), v: parseInt(parts[1],10) };
+      const neigh = this.neighbors(a);
+      const byColor = new Map<string, number>(); let total = 0;
+      for (const n of neigh) {
+        const nk = this.key(n);
+        if (this.placed.has(nk)) {
+          const col = this.colorByKey.get(nk);
+          if (!col) continue;
+          total++; byColor.set(col, (byColor.get(col) || 0) + 1);
+        }
+      }
+      if (total === 0 || byColor.size === 0) continue;
+      const ctx: any = { total, byColor };
+      const pick = (window as any).CARules ? (window as any).CARules.decideBirthColor(ctx, palette as any, selectedId, ruleMap) : null;
+      if (!pick) continue;
+      const nSame = byColor.get(pick) || 0; const score = total * 10 + nSame * 5;
+      if (!best || score > best.score) best = { a, score, color: pick };
+    }
+    if (best) {
+      const b = best.a; const k = this.key(b); this.frontier.delete(k); const p = this.axialToPoint(b);
+      if (!this.withinArea(p)) return false; this.place(b, best.color); this.renderCircle(b, p); this.updateCount(); return true;
+    }
+    return false;
+  }reset(); const ro = new ResizeObserver(() => this.resizeToHost(host)); ro.observe(host); this.resizeToHost(host);
   }
 
   private key(a: Axial): string { return `${a.u},${a.v}`; }
@@ -509,29 +538,7 @@ class ImageSampler {
   sampleAt(p: Point, areaW:number, areaH:number, fit:'cover'|'contain'|'fill'): RGB|null { if(!this.data) return null; const imgW=this.w, imgH=this.h; let sx=areaW/imgW, sy=areaH/imgH; if(fit==='cover'){ const s=Math.max(sx,sy); sx=sy=s; } else if(fit==='contain'){ const s=Math.min(sx,sy); sx=sy=s;} const offX=(areaW-imgW*sx)/2, offY=(areaH-imgH*sy)/2; const ax=p.x+areaW/2, ay=p.y+areaH/2; const ix=(ax-offX)/sx, iy=(ay-offY)/sy; const x=Math.floor(ix), y=Math.floor(iy); if(x<0||y<0||x>=imgW||y>=imgH) return null; const i=(y*imgW+x)*4, d=this.data.data; return { r:d[i], g:d[i+1], b:d[i+2] }; }
 }
 function srgbToLinear(v:number){ v/=255; return v<=0.04045? v/12.92 : Math.pow((v+0.055)/1.055,2.4); }
-function rgbDist2(a: RGB, b: RGB){ const ar=srgbToLinear(a.r), ag=srgbToLinear(a.g), ab=srgbToLinear(a.b); const br=srgbToLinear(b.r), bg=srgbToLinear(b.g), bb=srgbToLinear(b.b); const dr=ar-br, dg=ag-bg, db=ab-bb; return dr*dr+dg*dg+db*db; }
-
-
-
-
-
-  // CA step using per-color rules from CARules
-  addCAPaletteStep(palette: ColorEntry[], selectedId?: string): boolean {
-    this.ensureSeed();
-    let best: { a: Axial; score: number; color: string } | null = null;
-    const ruleMap = (window as any).CARules ? (window as any).CARules.getRulesForPalette(palette as any) : {};
-    for (const k of this.frontier) {
-      const parts = k.split(','); const a = { u: parseInt(parts[0],10), v: parseInt(parts[1],10) };
-      const neigh = this.neighbors(a);
-      const byColor = new Map<string, number>(); let total = 0;
-      for (const n of neigh) {
-        const nk = this.key(n);
-        if (this.placed.has(nk)) {
-          const col = this.colorByKey.get(nk);
-          if (!col) continue;
-          total++; byColor.set(col, (byColor.get(col) || 0) + 1);
-        }
-      }
+function rgbDist2(a: RGB, b: RGB){ const ar=srgbToLinear(a.r), ag=srgbToLinear(a.g), ab=srgbToLinear(a.b); const br=srgbToLinear(b.r), bg=srgbToLinear(b.g), bb=srgbToLinear(b.b); const dr=ar-br, dg=ag-bg, db=ab-bb; return dr*dr+dg*dg+db*db; }      }
       if (total === 0 || byColor.size === 0) continue;
       const ctx: any = { total, byColor };
       const pick = (window as any).CARules ? (window as any).CARules.decideBirthColor(ctx, palette as any, selectedId, ruleMap) : null;
@@ -545,4 +552,5 @@ function rgbDist2(a: RGB, b: RGB){ const ar=srgbToLinear(a.r), ag=srgbToLinear(a
     }
     return false;
   }
+
 

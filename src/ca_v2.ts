@@ -238,3 +238,16 @@ interface Window { honeyModel?: any; }
   }
   document.addEventListener('DOMContentLoaded', wire);
 })();
+// Helper: sync palette selection with CA v2 next color (visual only)
+(function(){
+  function setPaletteSelectionByColorValue(val){
+    try{ var pm=window.paletteManager; var sel=document.getElementById('paletteSelect'); if(!pm||!sel||!pm.colors) return; var e=pm.colors.find(function(x){return x && x.value===val;}); if(e){ sel.value=e.id; } }catch(_){ }
+  }
+  var oldPlace = window.__ca_v2_placePick;
+  window.__ca_v2_placePick = function(pick){
+    var ok=false; try{ var m=window.honeyModel; var k=m.key(pick.a); m.frontier.delete(k); var p=m.axialToPoint(pick.a); if(!m.withinArea(p)) return false; m.place(pick.a,pick.color); m.renderCircle(pick.a,p); m.updateCount(); ok=true; } finally {
+      try{ var st=window.CA_V2 && window.CA_V2.state; var cols=st && st.colorOrder; if(cols && cols.length){ var nextCol = cols[st.colorPtr % cols.length]; setPaletteSelectionByColorValue(nextCol); } }catch(_){ }
+    }
+    return ok;
+  };
+})();

@@ -64,6 +64,7 @@ var CARules;
 })(CARules || (CARules = {}));
 /// <reference path="./ca_rules.ts" />
 /* Clean TypeScript build for Honeycomb Circles Simulator */
+var _a;
 const LS_PALETTE_KEY = 'honeycomb.palette.v1';
 function parseCssColorToRgb(input) {
     if (!input)
@@ -737,53 +738,42 @@ class Honeycomb {
         }
         return this.placeAsNewInWedge(color, center);
     }
-    minFrontierRing() { let best = Infinity; for (const k of this.frontier) {
-        const [u, v] = k.split(',').map(Number);
-        const r = this.ring({ u, v });
-        if (r < best)
-            best = r;
-    } return best; }
-    // Cellular Automata (color-based) one step using external rules
-    addCAColorStep(ruleKey = "majority2") {
+    // CA step using per-color rules from CARules
+    addCAPaletteStep(palette, selectedId) {
         this.ensureSeed();
         let best = null;
+        const ruleMap = window.CARules ? window.CARules.getRulesForPalette(palette) : {};
         for (const k of this.frontier) {
             const parts = k.split(',');
             const a = { u: parseInt(parts[0], 10), v: parseInt(parts[1], 10) };
             const neigh = this.neighbors(a);
-            const counts = new Map();
+            const byColor = new Map();
             let total = 0;
             for (const n of neigh) {
                 const nk = this.key(n);
                 if (this.placed.has(nk)) {
                     const col = this.colorByKey.get(nk);
                     if (!col)
-                        continue; // only consider colored neighbors
+                        continue;
                     total++;
-                    counts.set(col, (counts.get(col) || 0) + 1);
+                    byColor.set(col, (byColor.get(col) || 0) + 1);
                 }
             }
-            if (total === 0 || counts.size === 0)
+            if (total === 0 || byColor.size === 0)
                 continue;
-            const rule = (CARules && CARules.getRule) ? CARules.getRule(ruleKey) : null;
-            const birthColor = rule ? rule.birth({ total, counts }) : null;
-            if (!birthColor)
+            const ctx = { total, byColor };
+            const pick = window.CARules ? window.CARules.decideBirthColor(ctx, palette, selectedId, ruleMap) : null;
+            if (!pick)
                 continue;
-            // score: prefer more neighbors and stronger majority
-            let maxSame = 0;
-            for (const v of counts.values()) {
-                if (v > maxSame)
-                    maxSame = v;
-            }
-            const score = total * 10 + maxSame;
-            if (!best || score > best.score) {
-                best = { a, score, color: birthColor };
-            }
+            const nSame = byColor.get(pick) || 0;
+            const score = total * 10 + nSame * 5;
+            if (!best || score > best.score)
+                best = { a, score, color: pick };
         }
         if (best) {
             const b = best.a;
-            const k = this.key(b);
-            this.frontier.delete(k);
+            const k2 = this.key(b);
+            this.frontier.delete(k2);
             const p = this.axialToPoint(b);
             if (!this.withinArea(p))
                 return false;
@@ -794,104 +784,200 @@ class Honeycomb {
         }
         return false;
     }
-    reset() { this.placed.clear(); this.frontier.clear(); this.order.length = 0; this.colorByKey.clear(); this.gCircles.replaceChildren(); this.sizeFactorByKey.clear(); this.place({ u: 0, v: 0 }); const p0 = this.axialToPoint({ u: 0, v: 0 }); this.renderCircle({ u: 0, v: 0 }, p0); this.updateCount(); }
-    getSvgBackgroundRgb() { const cs = getComputedStyle(this.svg); const bg = cs.backgroundColor || '#10131a'; return parseCssColorToRgb(String(bg)) || { r: 16, g: 19, b: 26 }; }
-    renderAll() { this.gCircles.replaceChildren(); for (const a of this.order) {
+}
+minFrontierRing();
+number;
+{
+    let best = Infinity;
+    for (const k of this.frontier) {
+        const [u, v] = k.split(',').map(Number);
+        const r = this.ring({ u, v });
+        if (r < best)
+            best = r;
+    }
+    return best;
+}
+// Cellular Automata (color-based) one step using external rules
+addCAColorStep(ruleKey, string = "majority2");
+boolean;
+{
+    this.ensureSeed();
+    let best = null;
+    for (const k of this.frontier) {
+        const parts = k.split(',');
+        const a = { u: parseInt(parts[0], 10), v: parseInt(parts[1], 10) };
+        const neigh = this.neighbors(a);
+        const counts = new Map();
+        let total = 0;
+        for (const n of neigh) {
+            const nk = this.key(n);
+            if (this.placed.has(nk)) {
+                const col = this.colorByKey.get(nk);
+                if (!col)
+                    continue; // only consider colored neighbors
+                total++;
+                counts.set(col, (counts.get(col) || 0) + 1);
+            }
+        }
+        if (total === 0 || counts.size === 0)
+            continue;
+        const rule = (CARules && CARules.getRule) ? CARules.getRule(ruleKey) : null;
+        const birthColor = rule ? rule.birth({ total, counts }) : null;
+        if (!birthColor)
+            continue;
+        // score: prefer more neighbors and stronger majority
+        let maxSame = 0;
+        for (const v of counts.values()) {
+            if (v > maxSame)
+                maxSame = v;
+        }
+        const score = total * 10 + maxSame;
+        if (!best || score > best.score) {
+            best = { a, score, color: birthColor };
+        }
+    }
+    if (best) {
+        const b = best.a;
+        const k = this.key(b);
+        this.frontier.delete(k);
+        const p = this.axialToPoint(b);
+        if (!this.withinArea(p))
+            return false;
+        this.place(b, best.color);
+        this.renderCircle(b, p);
+        this.updateCount();
+        return true;
+    }
+    return false;
+}
+reset();
+{
+    this.placed.clear();
+    this.frontier.clear();
+    this.order.length = 0;
+    this.colorByKey.clear();
+    this.gCircles.replaceChildren();
+    this.sizeFactorByKey.clear();
+    this.place({ u: 0, v: 0 });
+    const p0 = this.axialToPoint({ u: 0, v: 0 });
+    this.renderCircle({ u: 0, v: 0 }, p0);
+    this.updateCount();
+}
+getSvgBackgroundRgb();
+RGB;
+{
+    const cs = getComputedStyle(this.svg);
+    const bg = cs.backgroundColor || '#10131a';
+    return parseCssColorToRgb(String(bg)) || { r: 16, g: 19, b: 26 };
+}
+renderAll();
+{
+    this.gCircles.replaceChildren();
+    for (const a of this.order) {
         const p = this.axialToPoint(a);
         if (this.withinArea(p))
             this.renderCircle(a, p);
-    } }
-    renderCircle(a, p) {
-        var _a;
-        const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        c.setAttribute('class', 'node');
-        c.setAttribute('cx', String(p.x));
-        c.setAttribute('cy', String(p.y));
-        {
-            const rk = this.key(a);
-            const rf = (_a = this.sizeFactorByKey.get(rk)) !== null && _a !== void 0 ? _a : 1;
-            c.setAttribute('r', String(Math.max(1, Math.round(this.radius * rf))));
-        }
-        ;
-        c.setAttribute('data-key', this.key(a));
-        const fill = this.colorByKey.get(this.key(a));
-        if (fill)
-            c.style.fill = fill;
-        const bgRgb = this.getSvgBackgroundRgb();
-        const fillRgb = parseCssColorToRgb(fill || getComputedStyle(c).fill || '#60a5fa');
-        const ratio = contrastRatio(fillRgb, bgRgb);
-        if (isVeryDark(fillRgb)) {
-            const haloOuter = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-            haloOuter.setAttribute('cx', String(p.x));
-            haloOuter.setAttribute('cy', String(p.y));
-            haloOuter.setAttribute('r', String(this.radius));
-            haloOuter.setAttribute('fill', 'none');
-            haloOuter.setAttribute('stroke', '#cbd5e1');
-            haloOuter.setAttribute('stroke-width', String(Math.max(4, Math.round(this.radius * 0.42))));
-            haloOuter.setAttribute('stroke-linejoin', 'round');
-            haloOuter.setAttribute('stroke-linecap', 'round');
-            const haloInner = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-            haloInner.setAttribute('cx', String(p.x));
-            haloInner.setAttribute('cy', String(p.y));
-            haloInner.setAttribute('r', String(this.radius));
-            haloInner.setAttribute('fill', 'none');
-            haloInner.setAttribute('stroke', '#ffffff');
-            haloInner.setAttribute('stroke-width', String(Math.max(3, Math.round(this.radius * 0.28))));
-            haloInner.setAttribute('stroke-linejoin', 'round');
-            haloInner.setAttribute('stroke-linecap', 'round');
-            this.gCircles.appendChild(haloOuter);
-            this.gCircles.appendChild(haloInner);
-            this.gCircles.appendChild(c);
-        }
-        else if (ratio < 2.0) {
-            c.setAttribute('stroke', '#ffffff');
-            c.setAttribute('stroke-width', String(Math.max(3, Math.round(this.radius * 0.3))));
-            c.setAttribute('stroke-opacity', '0.95');
-            c.setAttribute('shape-rendering', 'geometricPrecision');
-            this.gCircles.appendChild(c);
-        }
-        else if (ratio < 3.0) {
-            c.setAttribute('stroke', '#ffffff');
-            c.setAttribute('stroke-width', String(Math.max(2, Math.round(this.radius * 0.18))));
-            c.setAttribute('stroke-opacity', '0.9');
-            c.setAttribute('shape-rendering', 'geometricPrecision');
-            this.gCircles.appendChild(c);
-        }
-        else {
-            c.removeAttribute('stroke');
-            c.removeAttribute('stroke-width');
-            c.removeAttribute('stroke-opacity');
-            this.gCircles.appendChild(c);
-        }
     }
-    applyHalftoneFromSampler(s, fit) {
-        this.sizeFactorByKey.clear();
-        for (const a of this.order) {
-            const p = this.axialToPoint(a);
-            const rgb = s.sampleAt(p, this.areaW, this.areaH, fit) || { r: 16, g: 19, b: 26 };
-            const L = relLuminance(rgb);
-            const f = Math.max(0.35, Math.min(1.0, 1.0 - L));
-            this.sizeFactorByKey.set(this.key(a), f);
-        }
-        this.renderAll();
+}
+renderCircle(a, Axial, p, Point);
+{
+    const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    c.setAttribute('class', 'node');
+    c.setAttribute('cx', String(p.x));
+    c.setAttribute('cy', String(p.y));
+    {
+        const rk = this.key(a);
+        const rf = (_a = this.sizeFactorByKey.get(rk)) !== null && _a !== void 0 ? _a : 1;
+        c.setAttribute('r', String(Math.max(1, Math.round(this.radius * rf))));
     }
-    clearHalftone() { this.sizeFactorByKey.clear(); this.renderAll(); }
-    applyDitherMixFromSampler(s, fit, palette) {
-        if (!s || !s.isReady || !s.isReady()) {
-            return;
-        }
-        for (const a of this.order) {
-            const p = this.axialToPoint(a);
-            const rgb = s.sampleAt(p, this.areaW, this.areaH, fit) || { r: 16, g: 19, b: 26 };
-            const pair = nearestTwoFromPalette(rgb, palette);
-            const r = pair.db / Math.max(1e-6, (pair.da + pair.db));
-            const thr = bayer8(a.u, a.v);
-            const pick = (r >= thr) ? pair.a : pair.b;
-            this.colorByKey.set(this.key(a), pick);
-        }
-        this.renderAll();
+    ;
+    c.setAttribute('data-key', this.key(a));
+    const fill = this.colorByKey.get(this.key(a));
+    if (fill)
+        c.style.fill = fill;
+    const bgRgb = this.getSvgBackgroundRgb();
+    const fillRgb = parseCssColorToRgb(fill || getComputedStyle(c).fill || '#60a5fa');
+    const ratio = contrastRatio(fillRgb, bgRgb);
+    if (isVeryDark(fillRgb)) {
+        const haloOuter = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        haloOuter.setAttribute('cx', String(p.x));
+        haloOuter.setAttribute('cy', String(p.y));
+        haloOuter.setAttribute('r', String(this.radius));
+        haloOuter.setAttribute('fill', 'none');
+        haloOuter.setAttribute('stroke', '#cbd5e1');
+        haloOuter.setAttribute('stroke-width', String(Math.max(4, Math.round(this.radius * 0.42))));
+        haloOuter.setAttribute('stroke-linejoin', 'round');
+        haloOuter.setAttribute('stroke-linecap', 'round');
+        const haloInner = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        haloInner.setAttribute('cx', String(p.x));
+        haloInner.setAttribute('cy', String(p.y));
+        haloInner.setAttribute('r', String(this.radius));
+        haloInner.setAttribute('fill', 'none');
+        haloInner.setAttribute('stroke', '#ffffff');
+        haloInner.setAttribute('stroke-width', String(Math.max(3, Math.round(this.radius * 0.28))));
+        haloInner.setAttribute('stroke-linejoin', 'round');
+        haloInner.setAttribute('stroke-linecap', 'round');
+        this.gCircles.appendChild(haloOuter);
+        this.gCircles.appendChild(haloInner);
+        this.gCircles.appendChild(c);
     }
-    updateCount() { this.countLabel.textContent = String(this.order.length); }
+    else if (ratio < 2.0) {
+        c.setAttribute('stroke', '#ffffff');
+        c.setAttribute('stroke-width', String(Math.max(3, Math.round(this.radius * 0.3))));
+        c.setAttribute('stroke-opacity', '0.95');
+        c.setAttribute('shape-rendering', 'geometricPrecision');
+        this.gCircles.appendChild(c);
+    }
+    else if (ratio < 3.0) {
+        c.setAttribute('stroke', '#ffffff');
+        c.setAttribute('stroke-width', String(Math.max(2, Math.round(this.radius * 0.18))));
+        c.setAttribute('stroke-opacity', '0.9');
+        c.setAttribute('shape-rendering', 'geometricPrecision');
+        this.gCircles.appendChild(c);
+    }
+    else {
+        c.removeAttribute('stroke');
+        c.removeAttribute('stroke-width');
+        c.removeAttribute('stroke-opacity');
+        this.gCircles.appendChild(c);
+    }
+}
+applyHalftoneFromSampler(s, any, fit, 'cover' | 'contain' | 'fill');
+{
+    this.sizeFactorByKey.clear();
+    for (const a of this.order) {
+        const p = this.axialToPoint(a);
+        const rgb = s.sampleAt(p, this.areaW, this.areaH, fit) || { r: 16, g: 19, b: 26 };
+        const L = relLuminance(rgb);
+        const f = Math.max(0.35, Math.min(1.0, 1.0 - L));
+        this.sizeFactorByKey.set(this.key(a), f);
+    }
+    this.renderAll();
+}
+clearHalftone();
+{
+    this.sizeFactorByKey.clear();
+    this.renderAll();
+}
+applyDitherMixFromSampler(s, any, fit, 'cover' | 'contain' | 'fill', palette, ColorEntry[]);
+{
+    if (!s || !s.isReady || !s.isReady()) {
+        return;
+    }
+    for (const a of this.order) {
+        const p = this.axialToPoint(a);
+        const rgb = s.sampleAt(p, this.areaW, this.areaH, fit) || { r: 16, g: 19, b: 26 };
+        const pair = nearestTwoFromPalette(rgb, palette);
+        const r = pair.db / Math.max(1e-6, (pair.da + pair.db));
+        const thr = bayer8(a.u, a.v);
+        const pick = (r >= thr) ? pair.a : pair.b;
+        this.colorByKey.set(this.key(a), pick);
+    }
+    this.renderAll();
+}
+updateCount();
+{
+    this.countLabel.textContent = String(this.order.length);
 }
 function main() {
     const host = document.getElementById('svgHost');
@@ -933,14 +1019,9 @@ function main() {
             const pick = all[Math.floor(Math.random() * all.length)].value;
             model.addClockV2WithColor(pick);
         }
-        else if (strat === 'clock3') {
-            const all = palette.colors;
-            if (!all.length)
-                return;
-            const pick = all[Math.floor(Math.random() * all.length)].value;
-            model.addClockV3WithColor(pick);
-        }
-        else if (strat === 'ca-color') {
+        else if (strat === 'clock3') { }
+        else if (strat === 'ca-color') { }
+        else if (strat === 'ca-palette') {
             model.addCAPaletteStep(palette.colors, (palette.selected && palette.selected.id) || undefined);
         }
         else {

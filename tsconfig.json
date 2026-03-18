@@ -10,6 +10,7 @@
     "removeComments": false,
     "sourceMap": false
   },
-  "include": ["src/main.ts"],
+  "include": ["src/**/*.ts"],
   "exclude": []
 }
+

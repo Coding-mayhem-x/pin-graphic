@@ -323,6 +323,26 @@ class Honeycomb {
       const b = this.findNearestFree(a, 60);
       if (b){ const p=this.axialToPoint(b); if(this.withinArea(p)){ this.place(b,color); this.renderCircle(b,p); this.updateCount(); return true; } }
     }
+  // CA step using per-color rules from CARules
+  addCAPaletteStep(palette: ColorEntry[], selectedId?: string): boolean {
+    this.ensureSeed();
+    let best: { a: Axial; score: number; color: string } | null = null;
+    const ruleMap = (window as any).CARules ? (window as any).CARules.getRulesForPalette(palette as any) : {};
+    for (const k of this.frontier) {
+      const parts = k.split(','); const a = { u: parseInt(parts[0],10), v: parseInt(parts[1],10) };
+      const neigh = this.neighbors(a);
+      const byColor = new Map<string, number>(); let total = 0;
+      for (const n of neigh) { const nk = this.key(n); if (this.placed.has(nk)) { const col = this.colorByKey.get(nk); if (!col) continue; total++; byColor.set(col, (byColor.get(col) || 0) + 1); } }
+      if (total === 0 || byColor.size === 0) continue;
+      const ctx: any = { total, byColor };
+      const pick = (window as any).CARules ? (window as any).CARules.decideBirthColor(ctx, palette as any, selectedId, ruleMap) : null;
+      if (!pick) continue;
+      const nSame = byColor.get(pick) || 0; const score = total * 10 + nSame * 5;
+      if (!best || score > best.score) best = { a, score, color: pick };
+    }
+    if (best) { const b = best.a; const rem = this.key(b); this.frontier.delete(rem); const p = this.axialToPoint(b); if (!this.withinArea(p)) return false; this.place(b, best.color); this.renderCircle(b, p); this.updateCount(); return true; }
+    return false;
+  }
     return false;
   }
     addClockV3WithColor(color: string): boolean {
@@ -367,25 +387,21 @@ class Honeycomb {
 
   
   // Cellular Automata (color-based) one step using external rules
-  addCAColorStep(palette: ColorEntry[], selectedId?: string): boolean {
-  this.ensureSeed();
-  let best: { a: Axial; score: number; color: string } | null = null;
-  const ruleMap = (window as any).CARules ? (window as any).CARules.getRulesForPalette(palette as any) : {};
-  for (const k of this.frontier) {
-    const parts = k.split(','); const a = { u: parseInt(parts[0],10), v: parseInt(parts[1],10) };
-    const neigh = this.neighbors(a);
-    const byColor = new Map<string, number>(); let total = 0;
-    for (const n of neigh) { const nk = this.key(n); if (this.placed.has(nk)) { const col = this.colorByKey.get(nk); if (!col) continue; total++; byColor.set(col, (byColor.get(col) || 0) + 1); } }
-    if (total === 0 || byColor.size === 0) continue;
-    const ctx: any = { total, byColor };
-    const pick = (window as any).CARules ? (window as any).CARules.decideBirthColor(ctx, palette as any, selectedId, ruleMap) : null;
-    if (!pick) continue;
-    const nSame = byColor.get(pick) || 0; const score = total * 10 + nSame * 5;
-    if (!best || score > best.score) best = { a, score, color: pick };
-  }
-  if (best) { const b = best.a; const rem = this.key(b); this.frontier.delete(rem); const p = this.axialToPoint(b); if (!this.withinArea(p)) return false; this.place(b, best.color); this.renderCircle(b, p); this.updateCount(); return true; }
-  return false;
-}
+  addCAColorStep(ruleKey: string = "majority2"): boolean {
+    this.ensureSeed();
+    let best: { a: Axial; score: number; color: string } | null = null;
+    for (const k of this.frontier) {
+      const parts = k.split(','); const a = { u: parseInt(parts[0],10), v: parseInt(parts[1],10) };
+      const neigh = this.neighbors(a);
+      const counts = new Map<string, number>(); let total = 0;
+      for (const n of neigh) {
+        const nk = this.key(n);
+        if (this.placed.has(nk)) {
+          const col = this.colorByKey.get(nk);
+          if (!col) continue; // only consider colored neighbors
+          total++;
+          counts.set(col, (counts.get(col) || 0) + 1);
+        }
       }
       if (total === 0 || counts.size === 0) continue;
       const rule = (CARules && CARules.getRule) ? CARules.getRule(ruleKey) : null;
@@ -458,44 +474,17 @@ function main() {
   (document.getElementById('btnAddRandomColor') as HTMLButtonElement).onclick = () => {
     const strat = (document.getElementById('strategySelect') as HTMLSelectElement)?.value || 'frontier';
     if (strat === 'clock') { const all = palette.colors; if (!all.length) return; const pick = all[Math.floor(Math.random() * all.length)].value; model.addClockWithColor(pick); }
-    else if (strat === 'clock2') { const all = palette.colors; if (!all.length) return; const pick = all[Math.floor(Math.random() * all.length)].value; model.addClockV2WithColor(pick); } else if (strat === 'clock3') { const all = palette.colors; if (!all.length) return; const pick = all[Math.floor(Math.random()*all.length)].value; model.addClockV3WithColor(pick); } else if (strat === 'ca-color') { (model as any).addCAColorStep(palette: ColorEntry[], selectedId?: string): boolean {
-  this.ensureSeed();
-  let best: { a: Axial; score: number; color: string } | null = null;
-  const ruleMap = (window as any).CARules ? (window as any).CARules.getRulesForPalette(palette as any) : {};
-  for (const k of this.frontier) {
-    const parts = k.split(','); const a = { u: parseInt(parts[0],10), v: parseInt(parts[1],10) };
-    const neigh = this.neighbors(a);
-    const byColor = new Map<string, number>(); let total = 0;
-    for (const n of neigh) { const nk = this.key(n); if (this.placed.has(nk)) { const col = this.colorByKey.get(nk); if (!col) continue; total++; byColor.set(col, (byColor.get(col) || 0) + 1); } }
-    if (total === 0 || byColor.size === 0) continue;
-    const ctx: any = { total, byColor };
-    const pick = (window as any).CARules ? (window as any).CARules.decideBirthColor(ctx, palette as any, selectedId, ruleMap) : null;
-    if (!pick) continue;
-    const nSame = byColor.get(pick) || 0; const score = total * 10 + nSame * 5;
-    if (!best || score > best.score) best = { a, score, color: pick };
-  }
-  if (best) { const b = best.a; const rem = this.key(b); this.frontier.delete(rem); const p = this.axialToPoint(b); if (!this.withinArea(p)) return false; this.place(b, best.color); this.renderCircle(b, p); this.updateCount(); return true; }
-  return false;
-};
-  (document.getElementById('btnAddRandomAny') as HTMLButtonElement).onclick = () => { const all = palette.colors; if (!all.length) return; const pick = all[Math.floor(Math.random() * all.length)].value; const strat = (document.getElementById('strategySelect') as HTMLSelectElement)?.value || 'frontier'; if (strat === 'clock') model.addClockWithColor(pick); else if (strat === 'clock2') model.addClockV2WithColor(pick); else if (strat === 'clock3') model.addClockV3WithColor(pick); else if (strat === 'ca-color') (model as any).addCAColorStep(palette: ColorEntry[], selectedId?: string): boolean {
-  this.ensureSeed();
-  let best: { a: Axial; score: number; color: string } | null = null;
-  const ruleMap = (window as any).CARules ? (window as any).CARules.getRulesForPalette(palette as any) : {};
-  for (const k of this.frontier) {
-    const parts = k.split(','); const a = { u: parseInt(parts[0],10), v: parseInt(parts[1],10) };
-    const neigh = this.neighbors(a);
-    const byColor = new Map<string, number>(); let total = 0;
-    for (const n of neigh) { const nk = this.key(n); if (this.placed.has(nk)) { const col = this.colorByKey.get(nk); if (!col) continue; total++; byColor.set(col, (byColor.get(col) || 0) + 1); } }
-    if (total === 0 || byColor.size === 0) continue;
-    const ctx: any = { total, byColor };
-    const pick = (window as any).CARules ? (window as any).CARules.decideBirthColor(ctx, palette as any, selectedId, ruleMap) : null;
-    if (!pick) continue;
-    const nSame = byColor.get(pick) || 0; const score = total * 10 + nSame * 5;
-    if (!best || score > best.score) best = { a, score, color: pick };
-  }
-  if (best) { const b = best.a; const rem = this.key(b); this.frontier.delete(rem); const p = this.axialToPoint(b); if (!this.withinArea(p)) return false; this.place(b, best.color); this.renderCircle(b, p); this.updateCount(); return true; }
-  return false;
-};
+    else if (strat === 'clock2') { const all = palette.colors; if (!all.length) return; const pick = all[Math.floor(Math.random() * all.length)].value; model.addClockV2WithColor(pick); } else if (strat === 'clock3') { const all = palette.colors; if (!all.length) return; const pick = all[Math.floor(Math.random()*all.length)].value; model.addClockV3WithColor(pick); } else if (strat === 'ca-color') { (model as any).addCAPaletteStep(palette.colors, (palette.selected && palette.selected.id) || undefined); } else { const sel = palette.selected; if (!sel) return; model.addRandomWithColor(sel.value); }
+  };
+  (document.getElementById('btnAddRandomAny') as HTMLButtonElement).onclick = () => { const all = palette.colors; if (!all.length) return; const pick = all[Math.floor(Math.random() * all.length)].value; const strat = (document.getElementById('strategySelect') as HTMLSelectElement)?.value || 'frontier'; if (strat === 'clock') model.addClockWithColor(pick); else if (strat === 'clock2') model.addClockV2WithColor(pick); else if (strat === 'clock3') model.addClockV3WithColor(pick); else if (strat === 'ca-color') (model as any).addCAPaletteStep(palette.colors, (palette.selected && palette.selected.id) || undefined); else model.addRandomWithColor(pick); };
+  const imgSampler = new ImageSampler();
+  const fileInput = document.getElementById('imgFile') as HTMLInputElement | null;
+  const fitSelect = document.getElementById('imgFit') as HTMLSelectElement | null;
+  const btnMapNow = document.getElementById('btnMapNow') as HTMLButtonElement | null;
+  if (fileInput) fileInput.onchange = async () => {
+    const f = fileInput.files && fileInput.files[0];
+    if (f) { try { await imgSampler.loadFile(f); } catch(e) { console.error('image load error', e); } }
+  };
   if (btnMapNow) btnMapNow.onclick = async () => {
     if (!imgSampler.isReady()) { console.warn('No image loaded'); return; }
     const fit = ((fitSelect?.value || 'cover') as any);

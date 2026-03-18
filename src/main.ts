@@ -1,4 +1,4 @@
-﻿/// <reference path="./ca_rules.ts" />
+/// <reference path="./ca_rules.ts" />
 /* Clean TypeScript build for Honeycomb Circles Simulator */
 
 type Axial = { u: number; v: number };
@@ -363,41 +363,6 @@ class Honeycomb {
       if(bestNode){ const pb=this.axialToPoint(bestNode); this.place(bestNode,color); this.renderCircle(bestNode,pb); this.updateCount(); return true; }
     }
     return this.placeAsNewInWedge(color, center);
-  // CA step using per-color rules from CARules
-  addCAPaletteStep(palette: ColorEntry[], selectedId?: string): boolean {
-    this.ensureSeed();
-    let best: { a: Axial; score: number; color: string } | null = null;
-    const ruleMap = (window as any).CARules ? (window as any).CARules.getRulesForPalette(palette as any) : {};
-    for (const k of this.frontier) {
-      const parts = k.split(','); const a = { u: parseInt(parts[0],10), v: parseInt(parts[1],10) };
-      const neigh = this.neighbors(a);
-      const byColor = new Map<string, number>(); let total = 0;
-      for (const n of neigh) {
-        const nk = this.key(n);
-        if (this.placed.has(nk)) {
-          const col = this.colorByKey.get(nk);
-          if (!col) continue;
-          total++; byColor.set(col, (byColor.get(col) || 0) + 1);
-        }
-      }
-      if (total === 0 || byColor.size === 0) continue;
-      const ctx: any = { total, byColor };
-      const pick = (window as any).CARules ? (window as any).CARules.decideBirthColor(ctx, palette as any, selectedId, ruleMap) : null;
-      if (!pick) continue;
-      const nSame = byColor.get(pick) || 0; const score = total * 10 + nSame * 5;
-      if (!best || score > best.score) best = { a, score, color: pick };
-    }
-    if (best) {
-      const b = best.a; const k2 = this.key(b); this.frontier.delete(k2);
-      const p = this.axialToPoint(b);
-      if (!this.withinArea(p)) return false;
-      this.place(b, best.color);
-      this.renderCircle(b, p);
-      this.updateCount();
-      return true;
-    }
-    return false;
-  }
   }private minFrontierRing(): number { let best=Infinity; for(const k of this.frontier){ const [u,v]=k.split(',').map(Number); const r=this.ring({u,v}); if(r<best) best=r; } return best; }
 
   
@@ -489,7 +454,7 @@ function main() {
   (document.getElementById('btnAddRandomColor') as HTMLButtonElement).onclick = () => {
     const strat = (document.getElementById('strategySelect') as HTMLSelectElement)?.value || 'frontier';
     if (strat === 'clock') { const all = palette.colors; if (!all.length) return; const pick = all[Math.floor(Math.random() * all.length)].value; model.addClockWithColor(pick); }
-else if (strat === 'ca-palette') { (model as any).addCAPaletteStep(palette.colors, (palette.selected && palette.selected.id) || undefined); } else {
+    else if (strat === 'clock2') { const all = palette.colors; if (!all.length) return; const pick = all[Math.floor(Math.random() * all.length)].value; model.addClockV2WithColor(pick); } else if (strat === 'clock3') { const all = palette.colors; if (!all.length) return; const pick = all[Math.floor(Math.random()*all.length)].value; model.addClockV3WithColor(pick); } else if (strat === 'ca-color') { (model as any).addCAColorStep('majority2'); } else { const sel = palette.selected; if (!sel) return; model.addRandomWithColor(sel.value); }
   };
   (document.getElementById('btnAddRandomAny') as HTMLButtonElement).onclick = () => { const all = palette.colors; if (!all.length) return; const pick = all[Math.floor(Math.random() * all.length)].value; const strat = (document.getElementById('strategySelect') as HTMLSelectElement)?.value || 'frontier'; if (strat === 'clock') model.addClockWithColor(pick); else if (strat === 'clock2') model.addClockV2WithColor(pick); else if (strat === 'clock3') model.addClockV3WithColor(pick); else if (strat === 'ca-color') (model as any).addCAColorStep('majority2'); else model.addRandomWithColor(pick); };
   const imgSampler = new ImageSampler();

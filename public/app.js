@@ -196,56 +196,6 @@ var CARules;
                 placeCAV2();
             } }, true);
         }
-        const btnSel = document.getElementById('btnAddRandomColor');
-        if (btnSel) {
-            btnSel.addEventListener('click', function (ev) { const cur = (sel.value || ''); if (cur === 'ca-v2') {
-                ev.stopImmediatePropagation();
-                ev.preventDefault();
-                placeCAV2();
-            } }, true);
-        }
-    }
-    document.addEventListener('DOMContentLoaded', interceptRunner);
-})();
-// CA v2 fairness update: round-robin per color, grow that color's smallest island first.
-(function () {
-    const g = window;
-    g.__caV2 = g.__caV2 || { idx: 0 };
-    function rrIndex(n) { const g = window.__caV2; if (!g)
-        return 0; g.idx = (g.idx || 0) % Math.max(1, n); const out = g.idx; g.idx = (g.idx + 1) % Math.max(1, n); return out; }
-    function smallestCompOfColor(model, color) {
-        const comps = model.componentsOfColor ? model.componentsOfColor(color) : [];
-        let best = null;
-        for (const c of comps) {
-            if (!best || c.length < best.length)
-                best = c;
-        }
-        return best || [];
-    }
-    function tryGrowColor(model, color) {
-        const comp = smallestCompOfColor(model, color);
-        if (!comp.length)
-            return null;
-        const frees = model.freeNeighbors(comp);
-        for (const f of frees) {
-            // B2 for this specific color, with gentle bridging if total >= 2
-            const by = (function () { const m = new Map(); for (const n of model.neighbors(f)) {
-                const nk = model.key(n);
-                if (model.placed.has(nk)) {
-                    const col = model.colorByKey.get(nk);
-                    if (col) {
-                        m.set(col, (m.get(col) || 0) + 1);
-                    }
-                }
-            } return m; })();
-            const total = Array.from(by.values()).reduce((s, n) => s + n, 0);
-            const nSame = by.get(color) || 0;
-            if (nSame >= 2 || total >= 2) {
-                const pt = model.axialToPoint(f);
-                if (model.withinArea(pt))
-                    return { a: f, color };
-            }
-        }
         return null;
     }
     function placeCAV2_Fair() {
@@ -312,367 +262,353 @@ var CARules;
                 placeCAV2_Fair();
             } }, true);
         }
-        const btnSel = document.getElementById('btnAddRandomColor');
-        if (btnSel) {
-            btnSel.addEventListener('click', function (ev) { const cur = (sel.value || ''); if (cur === 'ca-v2') {
-                ev.stopImmediatePropagation();
-                ev.preventDefault();
-                placeCAV2_Fair();
-            } }, true);
-        }
+        document.addEventListener('DOMContentLoaded', rewire);
     }
-    document.addEventListener('DOMContentLoaded', rewire);
-})();
-// CA v2 update: iterate over all existing color islands (components), not just colors.
-(function () {
-    const g = window;
-    g.__caV2 = g.__caV2 || {};
-    if (g.__caV2.compIdx === undefined)
-        g.__caV2.compIdx = 0;
-    function colorsPresent(model) {
-        const s = new Set();
-        if (model && model.colorByKey) {
-            for (const v of model.colorByKey.values())
-                if (v)
-                    s.add(v);
+    ();
+    // CA v2 update: iterate over all existing color islands (components), not just colors.
+    (function () {
+        const g = window;
+        g.__caV2 = g.__caV2 || {};
+        if (g.__caV2.compIdx === undefined)
+            g.__caV2.compIdx = 0;
+        function colorsPresent(model) {
+            const s = new Set();
+            if (model && model.colorByKey) {
+                for (const v of model.colorByKey.values())
+                    if (v)
+                        s.add(v);
+            }
+            return Array.from(s.values());
         }
-        return Array.from(s.values());
-    }
-    function allComponents(model) {
-        const out = [];
-        for (const col of colorsPresent(model)) {
-            const comps = model.componentsOfColor ? model.componentsOfColor(col) : [];
-            for (const c of comps) {
-                if (c && c.length)
-                    out.push({ color: col, comp: c });
-            }
-        }
-        // stable order: smallest first to help tiny islands
-        out.sort((a, b) => a.comp.length - b.comp.length);
-        return out;
-    }
-    function freeNeighbors(model, comp) { return model.freeNeighbors ? model.freeNeighbors(comp) : []; }
-    function neighCounts(model, a) { const m = new Map(); for (const n of model.neighbors(a)) {
-        const nk = model.key(n);
-        if (model.placed.has(nk)) {
-            const c = model.colorByKey.get(nk);
-            if (c)
-                m.set(c, (m.get(c) || 0) + 1);
-        }
-    } return m; }
-    // Interaction aware rule: prefer self if adjacent; if also adjacent to others, prefer boundary cells (more mixed) to encourage touching.
-    function pickForComponent(model, entry) {
-        const frees = freeNeighbors(model, entry.comp);
-        if (!frees.length)
-            return null;
-        let best = null;
-        for (const f of frees) {
-            const by = neighCounts(model, f);
-            const total = Array.from(by.values()).reduce((s, n) => s + n, 0);
-            const nSame = by.get(entry.color) || 0;
-            const nDiff = total - nSame;
-            if (total === 0)
-                continue; // ignore isolated holes; we want to grow where there is contact
-            // Score: prioritize boundary touching (nSame>=1 and nDiff>=1), then pure self (nSame>=1), then mixed (total>=2)
-            let ok = false;
-            let score = -1;
-            if (nSame >= 1 && nDiff >= 1) {
-                ok = true;
-                score = 100 + nSame * 10 + nDiff * 5;
-            }
-            else if (nSame >= 1) {
-                ok = true;
-                score = 80 + nSame * 10;
-            }
-            else if (total >= 2) {
-                ok = true;
-                score = 60 + nDiff * 5;
-            }
-            if (ok) {
-                const pt = model.axialToPoint(f);
-                if (!model.withinArea(pt))
-                    continue;
-                if (!best || score > best.score)
-                    best = { a: f, color: entry.color, score };
-            }
-        }
-        // If still none, allow seeding next to component (no neighbors filter) to unblock tiny singles
-        if (!best) {
-            for (const f of frees) {
-                const pt = model.axialToPoint(f);
-                if (model.withinArea(pt)) {
-                    best = { a: f, color: entry.color, score: 10 };
-                    break;
+        function allComponents(model) {
+            const out = [];
+            for (const col of colorsPresent(model)) {
+                const comps = model.componentsOfColor ? model.componentsOfColor(col) : [];
+                for (const c of comps) {
+                    if (c && c.length)
+                        out.push({ color: col, comp: c });
                 }
             }
+            // stable order: smallest first to help tiny islands
+            out.sort((a, b) => a.comp.length - b.comp.length);
+            return out;
         }
-        return best ? { a: best.a, color: best.color } : null;
-    }
-    function placeCAV2_AllIslands() {
-        const model = window.honeyModel;
-        if (!model)
+        function freeNeighbors(model, comp) { return model.freeNeighbors ? model.freeNeighbors(comp) : []; }
+        function neighCounts(model, a) { const m = new Map(); for (const n of model.neighbors(a)) {
+            const nk = model.key(n);
+            if (model.placed.has(nk)) {
+                const c = model.colorByKey.get(nk);
+                if (c)
+                    m.set(c, (m.get(c) || 0) + 1);
+            }
+        } return m; }
+        // Interaction aware rule: prefer self if adjacent; if also adjacent to others, prefer boundary cells (more mixed) to encourage touching.
+        function pickForComponent(model, entry) {
+            const frees = freeNeighbors(model, entry.comp);
+            if (!frees.length)
+                return null;
+            let best = null;
+            for (const f of frees) {
+                const by = neighCounts(model, f);
+                const total = Array.from(by.values()).reduce((s, n) => s + n, 0);
+                const nSame = by.get(entry.color) || 0;
+                const nDiff = total - nSame;
+                if (total === 0)
+                    continue; // ignore isolated holes; we want to grow where there is contact
+                // Score: prioritize boundary touching (nSame>=1 and nDiff>=1), then pure self (nSame>=1), then mixed (total>=2)
+                let ok = false;
+                let score = -1;
+                if (nSame >= 1 && nDiff >= 1) {
+                    ok = true;
+                    score = 100 + nSame * 10 + nDiff * 5;
+                }
+                else if (nSame >= 1) {
+                    ok = true;
+                    score = 80 + nSame * 10;
+                }
+                else if (total >= 2) {
+                    ok = true;
+                    score = 60 + nDiff * 5;
+                }
+                if (ok) {
+                    const pt = model.axialToPoint(f);
+                    if (!model.withinArea(pt))
+                        continue;
+                    if (!best || score > best.score)
+                        best = { a: f, color: entry.color, score };
+                }
+            }
+            // If still none, allow seeding next to component (no neighbors filter) to unblock tiny singles
+            if (!best) {
+                for (const f of frees) {
+                    const pt = model.axialToPoint(f);
+                    if (model.withinArea(pt)) {
+                        best = { a: f, color: entry.color, score: 10 };
+                        break;
+                    }
+                }
+            }
+            return best ? { a: best.a, color: best.color } : null;
+        }
+        function placeCAV2_AllIslands() {
+            const model = window.honeyModel;
+            if (!model)
+                return false;
+            const comps = allComponents(model);
+            if (!comps.length)
+                return false;
+            const g = window.__caV2;
+            const start = (g && typeof g.compIdx === 'number') ? g.compIdx % comps.length : 0;
+            for (let i = 0; i < comps.length; i++) {
+                const idx = (start + i) % comps.length;
+                const entry = comps[idx];
+                const pick = pickForComponent(model, entry);
+                if (pick) {
+                    const k = model.key(pick.a);
+                    model.frontier.delete(k);
+                    const p = model.axialToPoint(pick.a);
+                    if (!model.withinArea(p))
+                        continue;
+                    model.place(pick.a, pick.color);
+                    model.renderCircle(pick.a, p);
+                    model.updateCount();
+                    window.__caV2.compIdx = idx + 1;
+                    return true;
+                }
+            }
+            window.__caV2.compIdx = (start + 1) % comps.length; // advance to avoid getting stuck
             return false;
-        const comps = allComponents(model);
-        if (!comps.length)
-            return false;
-        const g = window.__caV2;
-        const start = (g && typeof g.compIdx === 'number') ? g.compIdx % comps.length : 0;
-        for (let i = 0; i < comps.length; i++) {
-            const idx = (start + i) % comps.length;
-            const entry = comps[idx];
-            const pick = pickForComponent(model, entry);
-            if (pick) {
-                const k = model.key(pick.a);
-                model.frontier.delete(k);
-                const p = model.axialToPoint(pick.a);
-                if (!model.withinArea(p))
-                    continue;
-                model.place(pick.a, pick.color);
-                model.renderCircle(pick.a, p);
-                model.updateCount();
-                window.__caV2.compIdx = idx + 1;
+        }
+        function rewireAllIslands() {
+            const sel = document.getElementById('strategySelect');
+            if (!sel)
+                return;
+            if (!Array.from(sel.options).some(o => o.value === 'ca-v2')) {
+                const opt = document.createElement('option');
+                opt.value = 'ca-v2';
+                opt.textContent = 'CA v2';
+                sel.appendChild(opt);
+            }
+            const btnAny = document.getElementById('btnAddRandomAny');
+            if (btnAny) {
+                btnAny.addEventListener('click', function (ev) { const cur = (sel.value || ''); if (cur === 'ca-v2') {
+                    ev.stopImmediatePropagation();
+                    ev.preventDefault();
+                    placeCAV2_AllIslands();
+                } }, true);
+            }
+            document.addEventListener('DOMContentLoaded', rewireAllIslands);
+        }
+        ();
+        // CA v2 reimplementation: strict round-robin across colors and their components
+        (function () {
+            const G = window;
+            G.CA_V2 = G.CA_V2 || { state: { colorOrder: [], colorPtr: 0, compPtr: {} } };
+            function model() { return window.honeyModel; }
+            function colorsPresent() {
+                const m = model();
+                const s = new Set();
+                if (m && m.colorByKey) {
+                    for (const v of m.colorByKey.values())
+                        if (v)
+                            s.add(v);
+                }
+                return Array.from(s.values());
+            }
+            function refreshColorOrder() {
+                const st = window.CA_V2.state;
+                const before = new Set(st.colorOrder);
+                const now = colorsPresent().sort();
+                st.colorOrder = now;
+                for (const c of now) {
+                    if (!(c in st.compPtr))
+                        st.compPtr[c] = 0;
+                }
+                // drop compPtr for missing colors
+                for (const c of Object.keys(st.compPtr)) {
+                    if (!now.includes(c))
+                        delete st.compPtr[c];
+                }
+                if (st.colorPtr >= st.colorOrder.length)
+                    st.colorPtr = 0;
+            }
+            function componentsOfColor(col) { const m = model(); return (m && m.componentsOfColor) ? m.componentsOfColor(col) : []; }
+            function freeNeighbors(comp) { const m = model(); return (m && m.freeNeighbors) ? m.freeNeighbors(comp) : []; }
+            function key(a) { const m = model(); return m.key(a); }
+            function within(a) { const m = model(); return m.withinArea(m.axialToPoint(a)); }
+            function neighCounts(a) { const m = model(); const map = new Map(); for (const n of m.neighbors(a)) {
+                const nk = key(n);
+                if (m.placed.has(nk)) {
+                    const col = m.colorByKey.get(nk);
+                    if (col)
+                        map.set(col, (map.get(col) || 0) + 1);
+                }
+            } return map; }
+            function tryGrowComponent(col, comp) {
+                const m = model();
+                const frees = freeNeighbors(comp);
+                if (!frees || !frees.length)
+                    return null;
+                // 1) Prefer boundary that touches self and others
+                let best = null;
+                for (const f of frees) {
+                    const by = neighCounts(f);
+                    const total = Array.from(by.values()).reduce((s, n) => s + n, 0);
+                    const nSame = by.get(col) || 0;
+                    const nDiff = total - nSame;
+                    if (total > 0 && nSame >= 1 && nDiff >= 1 && within(f)) {
+                        const score = 100 + nSame * 10 + nDiff * 5;
+                        if (!best || score > best.score)
+                            best = { a: f, color: col, score };
+                    }
+                }
+                if (best)
+                    return { a: best.a, color: col };
+                // 2) Self-adjacent growth
+                for (const f of frees) {
+                    const by = neighCounts(f);
+                    const nSame = by.get(col) || 0;
+                    if (nSame >= 1 && within(f))
+                        return { a: f, color: col };
+                }
+                // 3) Gentle bridging where total >= 2
+                for (const f of frees) {
+                    const by = neighCounts(f);
+                    const total = Array.from(by.values()).reduce((s, n) => s + n, 0);
+                    if (total >= 2 && within(f))
+                        return { a: f, color: col };
+                }
+                // 4) Last resort seed next to component
+                for (const f of frees) {
+                    if (within(f))
+                        return { a: f, color: col };
+                }
+                return null;
+            }
+            function placePick(pick) {
+                const m = model();
+                const k = key(pick.a);
+                m.frontier.delete(k);
+                const p = m.axialToPoint(pick.a);
+                if (!m.withinArea(p))
+                    return false;
+                m.place(pick.a, pick.color);
+                m.renderCircle(pick.a, p);
+                m.updateCount();
                 return true;
             }
-        }
-        window.__caV2.compIdx = (start + 1) % comps.length; // advance to avoid getting stuck
-        return false;
-    }
-    function rewireAllIslands() {
-        const sel = document.getElementById('strategySelect');
-        if (!sel)
-            return;
-        if (!Array.from(sel.options).some(o => o.value === 'ca-v2')) {
-            const opt = document.createElement('option');
-            opt.value = 'ca-v2';
-            opt.textContent = 'CA v2';
-            sel.appendChild(opt);
-        }
-        const btnAny = document.getElementById('btnAddRandomAny');
-        if (btnAny) {
-            btnAny.addEventListener('click', function (ev) { const cur = (sel.value || ''); if (cur === 'ca-v2') {
-                ev.stopImmediatePropagation();
-                ev.preventDefault();
-                placeCAV2_AllIslands();
-            } }, true);
-        }
-        const btnSel = document.getElementById('btnAddRandomColor');
-        if (btnSel) {
-            btnSel.addEventListener('click', function (ev) { const cur = (sel.value || ''); if (cur === 'ca-v2') {
-                ev.stopImmediatePropagation();
-                ev.preventDefault();
-                placeCAV2_AllIslands();
-            } }, true);
-        }
-    }
-    document.addEventListener('DOMContentLoaded', rewireAllIslands);
-})();
-// CA v2 reimplementation: strict round-robin across colors and their components
-(function () {
-    const G = window;
-    G.CA_V2 = G.CA_V2 || { state: { colorOrder: [], colorPtr: 0, compPtr: {} } };
-    function model() { return window.honeyModel; }
-    function colorsPresent() {
-        const m = model();
-        const s = new Set();
-        if (m && m.colorByKey) {
-            for (const v of m.colorByKey.values())
-                if (v)
-                    s.add(v);
-        }
-        return Array.from(s.values());
-    }
-    function refreshColorOrder() {
-        const st = window.CA_V2.state;
-        const before = new Set(st.colorOrder);
-        const now = colorsPresent().sort();
-        st.colorOrder = now;
-        for (const c of now) {
-            if (!(c in st.compPtr))
-                st.compPtr[c] = 0;
-        }
-        // drop compPtr for missing colors
-        for (const c of Object.keys(st.compPtr)) {
-            if (!now.includes(c))
-                delete st.compPtr[c];
-        }
-        if (st.colorPtr >= st.colorOrder.length)
-            st.colorPtr = 0;
-    }
-    function componentsOfColor(col) { const m = model(); return (m && m.componentsOfColor) ? m.componentsOfColor(col) : []; }
-    function freeNeighbors(comp) { const m = model(); return (m && m.freeNeighbors) ? m.freeNeighbors(comp) : []; }
-    function key(a) { const m = model(); return m.key(a); }
-    function within(a) { const m = model(); return m.withinArea(m.axialToPoint(a)); }
-    function neighCounts(a) { const m = model(); const map = new Map(); for (const n of m.neighbors(a)) {
-        const nk = key(n);
-        if (m.placed.has(nk)) {
-            const col = m.colorByKey.get(nk);
-            if (col)
-                map.set(col, (map.get(col) || 0) + 1);
-        }
-    } return map; }
-    function tryGrowComponent(col, comp) {
-        const m = model();
-        const frees = freeNeighbors(comp);
-        if (!frees || !frees.length)
-            return null;
-        // 1) Prefer boundary that touches self and others
-        let best = null;
-        for (const f of frees) {
-            const by = neighCounts(f);
-            const total = Array.from(by.values()).reduce((s, n) => s + n, 0);
-            const nSame = by.get(col) || 0;
-            const nDiff = total - nSame;
-            if (total > 0 && nSame >= 1 && nDiff >= 1 && within(f)) {
-                const score = 100 + nSame * 10 + nDiff * 5;
-                if (!best || score > best.score)
-                    best = { a: f, color: col, score };
-            }
-        }
-        if (best)
-            return { a: best.a, color: col };
-        // 2) Self-adjacent growth
-        for (const f of frees) {
-            const by = neighCounts(f);
-            const nSame = by.get(col) || 0;
-            if (nSame >= 1 && within(f))
-                return { a: f, color: col };
-        }
-        // 3) Gentle bridging where total >= 2
-        for (const f of frees) {
-            const by = neighCounts(f);
-            const total = Array.from(by.values()).reduce((s, n) => s + n, 0);
-            if (total >= 2 && within(f))
-                return { a: f, color: col };
-        }
-        // 4) Last resort seed next to component
-        for (const f of frees) {
-            if (within(f))
-                return { a: f, color: col };
-        }
-        return null;
-    }
-    function placePick(pick) {
-        const m = model();
-        const k = key(pick.a);
-        m.frontier.delete(k);
-        const p = m.axialToPoint(pick.a);
-        if (!m.withinArea(p))
-            return false;
-        m.place(pick.a, pick.color);
-        m.renderCircle(pick.a, p);
-        m.updateCount();
-        return true;
-    }
-    function step() {
-        const m = model();
-        if (!m)
-            return false;
-        refreshColorOrder();
-        const st = window.CA_V2.state;
-        const colors = st.colorOrder;
-        if (!colors.length)
-            return false;
-        // total attempts bounded by sum of components across colors
-        let totalComps = 0;
-        const perColorComps = {};
-        for (const col of colors) {
-            const comps = componentsOfColor(col).filter(c => c && c.length);
-            perColorComps[col] = comps;
-            totalComps += comps.length;
-            if (!(col in st.compPtr))
-                st.compPtr[col] = 0;
-        }
-        if (totalComps === 0)
-            return false;
-        for (let tries = 0; tries < totalComps; tries++) {
-            const col = colors[st.colorPtr % colors.length];
-            const comps = perColorComps[col];
-            if (!comps.length) {
-                st.colorPtr = (st.colorPtr + 1) % colors.length;
-                continue;
-            }
-            const idx = st.compPtr[col] % comps.length;
-            const comp = comps[idx];
-            const pick = tryGrowComponent(col, comp);
-            st.compPtr[col] = (st.compPtr[col] + 1) % Math.max(1, comps.length);
-            st.colorPtr = (st.colorPtr + 1) % colors.length;
-            if (pick) {
-                return placePick(pick);
-            }
-        }
-        return false;
-    }
-    // Set CA v2 to call this step
-    function wire() {
-        const sel = document.getElementById('strategySelect');
-        if (!sel)
-            return;
-        if (!Array.from(sel.options).some(o => o.value === 'ca-v2')) {
-            const opt = document.createElement('option');
-            opt.value = 'ca-v2';
-            opt.textContent = 'CA v2';
-            sel.appendChild(opt);
-        }
-        const call = (ev) => { const cur = (sel.value || ''); if (cur === 'ca-v2') {
-            ev.stopImmediatePropagation();
-            ev.preventDefault();
-            step();
-        } };
-        const any = document.getElementById('btnAddRandomAny');
-        if (any) {
-            any.addEventListener('click', call, true);
-        }
-        const selBtn = document.getElementById('btnAddRandomColor');
-        if (selBtn) {
-            selBtn.addEventListener('click', call, true);
-        }
-    }
-    document.addEventListener('DOMContentLoaded', wire);
-})();
-// Helper: sync palette selection with CA v2 next color (visual only)
-(function () {
-    function setPaletteSelectionByColorValue(val) {
-        try {
-            var pm = window.paletteManager;
-            var sel = document.getElementById('paletteSelect');
-            if (!pm || !sel || !pm.colors)
-                return;
-            var e = pm.colors.find(function (x) { return x && x.value === val; });
-            if (e) {
-                sel.value = e.id;
-            }
-        }
-        catch (_) { }
-    }
-    var oldPlace = window.__ca_v2_placePick;
-    window.__ca_v2_placePick = function (pick) {
-        var ok = false;
-        try {
-            var m = window.honeyModel;
-            var k = m.key(pick.a);
-            m.frontier.delete(k);
-            var p = m.axialToPoint(pick.a);
-            if (!m.withinArea(p))
+            function step() {
+                const m = model();
+                if (!m)
+                    return false;
+                refreshColorOrder();
+                const st = window.CA_V2.state;
+                const colors = st.colorOrder;
+                if (!colors.length)
+                    return false;
+                // total attempts bounded by sum of components across colors
+                let totalComps = 0;
+                const perColorComps = {};
+                for (const col of colors) {
+                    const comps = componentsOfColor(col).filter(c => c && c.length);
+                    perColorComps[col] = comps;
+                    totalComps += comps.length;
+                    if (!(col in st.compPtr))
+                        st.compPtr[col] = 0;
+                }
+                if (totalComps === 0)
+                    return false;
+                for (let tries = 0; tries < totalComps; tries++) {
+                    const col = colors[st.colorPtr % colors.length];
+                    const comps = perColorComps[col];
+                    if (!comps.length) {
+                        st.colorPtr = (st.colorPtr + 1) % colors.length;
+                        continue;
+                    }
+                    const idx = st.compPtr[col] % comps.length;
+                    const comp = comps[idx];
+                    const pick = tryGrowComponent(col, comp);
+                    st.compPtr[col] = (st.compPtr[col] + 1) % Math.max(1, comps.length);
+                    st.colorPtr = (st.colorPtr + 1) % colors.length;
+                    if (pick) {
+                        return placePick(pick);
+                    }
+                }
                 return false;
-            m.place(pick.a, pick.color);
-            m.renderCircle(pick.a, p);
-            m.updateCount();
-            ok = true;
-        }
-        finally {
-            try {
-                var st = window.CA_V2 && window.CA_V2.state;
-                var cols = st && st.colorOrder;
-                if (cols && cols.length) {
-                    var nextCol = cols[st.colorPtr % cols.length];
-                    setPaletteSelectionByColorValue(nextCol);
+            }
+            // Set CA v2 to call this step
+            function wire() {
+                const sel = document.getElementById('strategySelect');
+                if (!sel)
+                    return;
+                if (!Array.from(sel.options).some(o => o.value === 'ca-v2')) {
+                    const opt = document.createElement('option');
+                    opt.value = 'ca-v2';
+                    opt.textContent = 'CA v2';
+                    sel.appendChild(opt);
+                }
+                const call = (ev) => { const cur = (sel.value || ''); if (cur === 'ca-v2') {
+                    ev.stopImmediatePropagation();
+                    ev.preventDefault();
+                    step();
+                } };
+                const any = document.getElementById('btnAddRandomAny');
+                if (any) {
+                    any.addEventListener('click', call, true);
+                }
+                const selBtn = document.getElementById('btnAddRandomColor');
+                if (selBtn) {
+                    selBtn.addEventListener('click', call, true);
                 }
             }
-            catch (_) { }
-        }
-        return ok;
-    };
-})();
+            document.addEventListener('DOMContentLoaded', wire);
+        })();
+        // Helper: sync palette selection with CA v2 next color (visual only)
+        (function () {
+            function setPaletteSelectionByColorValue(val) {
+                try {
+                    var pm = window.paletteManager;
+                    var sel = document.getElementById('paletteSelect');
+                    if (!pm || !sel || !pm.colors)
+                        return;
+                    var e = pm.colors.find(function (x) { return x && x.value === val; });
+                    if (e) {
+                        sel.value = e.id;
+                    }
+                }
+                catch (_) { }
+            }
+            var oldPlace = window.__ca_v2_placePick;
+            window.__ca_v2_placePick = function (pick) {
+                var ok = false;
+                try {
+                    var m = window.honeyModel;
+                    var k = m.key(pick.a);
+                    m.frontier.delete(k);
+                    var p = m.axialToPoint(pick.a);
+                    if (!m.withinArea(p))
+                        return false;
+                    m.place(pick.a, pick.color);
+                    m.renderCircle(pick.a, p);
+                    m.updateCount();
+                    ok = true;
+                }
+                finally {
+                    try {
+                        var st = window.CA_V2 && window.CA_V2.state;
+                        var cols = st && st.colorOrder;
+                        if (cols && cols.length) {
+                            var nextCol = cols[st.colorPtr % cols.length];
+                            setPaletteSelectionByColorValue(nextCol);
+                        }
+                    }
+                    catch (_) { }
+                }
+                return ok;
+            };
+        })();
+    });
+});
 /// <reference path="./ca_rules.ts" />
 /* Clean TypeScript build for Honeycomb Circles Simulator */
 const LS_PALETTE_KEY = 'honeycomb.palette.v1';

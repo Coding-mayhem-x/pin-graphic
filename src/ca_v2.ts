@@ -52,35 +52,7 @@ interface Window { honeyModel?: any; }
       const opt = document.createElement('option'); opt.value='ca-v2'; opt.textContent='CA v2'; sel.appendChild(opt);
     }
     const btnAny = document.getElementById('btnAddRandomAny'); if(btnAny){ btnAny.addEventListener('click', function(ev){ const cur = (sel.value||''); if(cur==='ca-v2'){ ev.stopImmediatePropagation(); ev.preventDefault(); placeCAV2(); } }, true); }
-    const btnSel = document.getElementById('btnAddRandomColor'); if(btnSel){ btnSel.addEventListener('click', function(ev){ const cur = (sel.value||''); if(cur==='ca-v2'){ ev.stopImmediatePropagation(); ev.preventDefault(); placeCAV2(); } }, true); }
-  }
-
-  document.addEventListener('DOMContentLoaded', interceptRunner);
-})();
-// CA v2 fairness update: round-robin per color, grow that color's smallest island first.
-(function(){
-  const g:any = (window as any);
-  g.__caV2 = g.__caV2 || { idx: 0 };
-
-  function rrIndex(n:number){ const g:any=(window as any).__caV2; if(!g) return 0; g.idx = (g.idx||0)%Math.max(1,n); const out=g.idx; g.idx=(g.idx+1)%Math.max(1,n); return out; }
-
-  function smallestCompOfColor(model:any, color:string): any[] {
-    const comps = model.componentsOfColor ? model.componentsOfColor(color) : [];
-    let best:any[]|null = null; for(const c of comps){ if(!best || c.length < best.length) best = c; }
-    return best || [];
-  }
-
-  function tryGrowColor(model:any, color:string): {a:any,color:string}|null{
-    const comp = smallestCompOfColor(model, color); if(!comp.length) return null;
-    const frees = model.freeNeighbors(comp);
-    for(const f of frees){
-      // B2 for this specific color, with gentle bridging if total >= 2
-      const by = (function(){ const m=new Map<string,number>(); for(const n of model.neighbors(f)){ const nk = model.key(n); if(model.placed.has(nk)){ const col=model.colorByKey.get(nk); if(col){ m.set(col,(m.get(col)||0)+1); } } } return m; })();
-      const total = Array.from(by.values()).reduce((s,n)=>s+n,0);
-      const nSame = by.get(color)||0;
-      if(nSame >= 2 || total >= 2){ const pt=model.axialToPoint(f); if(model.withinArea(pt)) return {a:f,color}; }
-    }
-    return null;
+        return null;
   }
 
   function placeCAV2_Fair(){
@@ -104,9 +76,7 @@ interface Window { honeyModel?: any; }
     const sel = document.getElementById('strategySelect') as HTMLSelectElement | null; if(!sel) return;
     if(!Array.from(sel.options).some(o=>o.value==='ca-v2')){ const opt=document.createElement('option'); opt.value='ca-v2'; opt.textContent='CA v2'; sel.appendChild(opt); }
     const btnAny = document.getElementById('btnAddRandomAny'); if(btnAny){ btnAny.addEventListener('click', function(ev){ const cur = (sel.value||''); if(cur==='ca-v2'){ ev.stopImmediatePropagation(); ev.preventDefault(); placeCAV2_Fair(); } }, true); }
-    const btnSel = document.getElementById('btnAddRandomColor'); if(btnSel){ btnSel.addEventListener('click', function(ev){ const cur = (sel.value||''); if(cur==='ca-v2'){ ev.stopImmediatePropagation(); ev.preventDefault(); placeCAV2_Fair(); } }, true); }
-  }
-
+    
   document.addEventListener('DOMContentLoaded', rewire);
 })();
 
@@ -163,9 +133,7 @@ interface Window { honeyModel?: any; }
     const sel = document.getElementById('strategySelect') as HTMLSelectElement | null; if(!sel) return;
     if(!Array.from(sel.options).some(o=>o.value==='ca-v2')){ const opt=document.createElement('option'); opt.value='ca-v2'; opt.textContent='CA v2'; sel.appendChild(opt); }
     const btnAny = document.getElementById('btnAddRandomAny'); if(btnAny){ btnAny.addEventListener('click', function(ev){ const cur = (sel.value||''); if(cur==='ca-v2'){ ev.stopImmediatePropagation(); ev.preventDefault(); placeCAV2_AllIslands(); } }, true); }
-    const btnSel = document.getElementById('btnAddRandomColor'); if(btnSel){ btnSel.addEventListener('click', function(ev){ const cur = (sel.value||''); if(cur==='ca-v2'){ ev.stopImmediatePropagation(); ev.preventDefault(); placeCAV2_AllIslands(); } }, true); }
-  }
-
+    
   document.addEventListener('DOMContentLoaded', rewireAllIslands);
 })();
 // CA v2 reimplementation: strict round-robin across colors and their components
@@ -251,3 +219,4 @@ interface Window { honeyModel?: any; }
     return ok;
   };
 })();
+

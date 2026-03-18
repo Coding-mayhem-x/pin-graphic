@@ -1,54 +1,54 @@
 ﻿// src/ca_rules.ts
-// Cellular Automata rules per color (no modules; attaches to window as CARules)
-
-type ColorEntry = { id: string; name: string; value: string; ruleKey?: string };
+// Cellular Automata rules based on neighbor colors (no modules; global namespace)
 
 namespace CARules {
-  export type ColorCounts = { total: number; byColor: Map<string, number> };
-  export type ColorRuleFn = (ctx: ColorCounts, targetColor: string) => boolean;
+  export type ColorCounts = { total: number; counts: Map<string, number> };
+  export type BirthFn = (ctx: ColorCounts) => string | null;
+  export interface Rule { key: string; description: string; birth: BirthFn; }
 
-  export interface Rule { key: string; name: string; desc: string; fn: ColorRuleFn; }
-
-  const rules: Record<string, Rule> = {
-    B2: { key: 'B2', name: 'Birth ≥2 same-color neighbors', desc: 'Spawn if at least 2 neighbors of this color', fn: (ctx, color) => (ctx.byColor.get(color) || 0) >= 2 },
-    B3: { key: 'B3', name: 'Birth ≥3 same-color neighbors', desc: 'Spawn if at least 3 neighbors of this color', fn: (ctx, color) => (ctx.byColor.get(color) || 0) >= 3 },
-    Dom: { key: 'Dom', name: 'Dominate neighbors', desc: 'Spawn if this color has strictly most neighbors', fn: (ctx, color) => { const v = ctx.byColor.get(color) || 0; let maxOther = 0; for (const [c, n] of ctx.byColor) if (c !== color && n > maxOther) maxOther = n; return v > maxOther && v > 0; } },
+  // Majority rule with threshold >=2 same-colored neighbors
+  const majority2: Rule = {
+    key: 'majority2',
+    description: 'Birth if at least 2 neighbors share a color; pick that color',
+    birth: (ctx: ColorCounts) => {
+      let bestColor: string | null = null; let best = 0;
+      for (const [color, n] of ctx.counts.entries()) {
+        if (n > best) { best = n; bestColor = color; }
+      }
+      if (bestColor && best >= 2) return bestColor;
+      return null;
+    }
   };
 
-  const LS_KEY = 'honeycomb.caRules.v1';
-
-  export function registry(): Rule[] { return Object.values(rules); }
-  export function getRule(key?: string): Rule { return rules[key || 'B2'] || rules['B2']; }
-
-  export type RuleMap = Record<string, string>; // colorId -> ruleKey
-
-  export function getRulesForPalette(palette: ColorEntry[]): RuleMap {
-    let map: RuleMap = {};
-    try { const raw = localStorage.getItem(LS_KEY); if (raw) map = JSON.parse(raw) as RuleMap; } catch {}
-    for (const c of palette) if (!map[c.id]) map[c.id] = c.ruleKey || 'B2';
-    return map;
-  }
-
-  export function setRuleForColor(colorId: string, ruleKey: string) {
-    let map: RuleMap = {};
-    try { const raw = localStorage.getItem(LS_KEY); if (raw) map = JSON.parse(raw) as RuleMap; } catch {}
-    map[colorId] = rules[ruleKey] ? ruleKey : 'B2';
-    try { localStorage.setItem(LS_KEY, JSON.stringify(map)); } catch {}
-  }
-
-  export function decideBirthColor(ctx: ColorCounts, palette: ColorEntry[], selectedId: string | undefined, ruleMap: RuleMap): string | null {
-    const eligible: { color: string; n: number; pri: number }[] = [];
-    for (const c of palette) {
-      const rk = ruleMap[c.id] || c.ruleKey || 'B2';
-      const rule = getRule(rk);
-      if (rule.fn(ctx, c.value)) {
-        const n = ctx.byColor.get(c.value) || 0;
-        const pri = (c.id === selectedId ? 1 : 2);
-        eligible.push({ color: c.value, n, pri });
+  // Tie-break: prefer darker majority (fallback)
+  const majority2PreferDark: Rule = {
+    key: 'majority2_dark',
+    description: 'Like majority2; on ties prefer darker color',
+    birth: (ctx: ColorCounts) => {
+      let best = 0; const candidates: string[] = [];
+      for (const [color, n] of ctx.counts.entries()) {
+        if (n > best) { best = n; candidates.length = 0; candidates.push(color); }
+        else if (n === best) { candidates.push(color); }
       }
+      if (best >= 2 && candidates.length) {
+        if (candidates.length === 1) return candidates[0];
+        const lum = (hex: string) => {
+          const p = (s: string) => parseInt(s, 16) / 255;
+          const h = hex.replace('#',''); const r = p(h.slice(0,2)), g=p(h.slice(2,4)), b=p(h.slice(4,6));
+          return 0.2126*r + 0.7152*g + 0.0722*b;
+        };
+        candidates.sort((a,b) => lum(a) - lum(b));
+        return candidates[0];
+      }
+      return null;
     }
-    if (!eligible.length) return null;
-    eligible.sort((a,b)=> a.pri!==b.pri ? a.pri-b.pri : (b.n - a.n));
-    return eligible[0].color;
-  }
+  };
+
+  const registry: Record<string, Rule> = {
+    [majority2.key]: majority2,
+    [majority2PreferDark.key]: majority2PreferDark,
+  };
+
+  export function getRule(key: string): Rule { return registry[key] || majority2; }
+  export function list(): Rule[] { return Object.values(registry); }
 }

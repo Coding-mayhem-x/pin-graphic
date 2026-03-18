@@ -1,66 +1,66 @@
 "use strict";
 // src/ca_rules.ts
-// Cellular Automata rules per color (no modules; attaches to window as CARules)
+// Cellular Automata rules based on neighbor colors (no modules; global namespace)
 var CARules;
 (function (CARules) {
-    const rules = {
-        B2: { key: 'B2', name: 'Birth ≥2 same-color neighbors', desc: 'Spawn if at least 2 neighbors of this color', fn: (ctx, color) => (ctx.byColor.get(color) || 0) >= 2 },
-        B3: { key: 'B3', name: 'Birth ≥3 same-color neighbors', desc: 'Spawn if at least 3 neighbors of this color', fn: (ctx, color) => (ctx.byColor.get(color) || 0) >= 3 },
-        Dom: { key: 'Dom', name: 'Dominate neighbors', desc: 'Spawn if this color has strictly most neighbors', fn: (ctx, color) => { const v = ctx.byColor.get(color) || 0; let maxOther = 0; for (const [c, n] of ctx.byColor)
-                if (c !== color && n > maxOther)
-                    maxOther = n; return v > maxOther && v > 0; } },
-    };
-    const LS_KEY = 'honeycomb.caRules.v1';
-    function registry() { return Object.values(rules); }
-    CARules.registry = registry;
-    function getRule(key) { return rules[key || 'B2'] || rules['B2']; }
-    CARules.getRule = getRule;
-    function getRulesForPalette(palette) {
-        let map = {};
-        try {
-            const raw = localStorage.getItem(LS_KEY);
-            if (raw)
-                map = JSON.parse(raw);
-        }
-        catch { }
-        for (const c of palette)
-            if (!map[c.id])
-                map[c.id] = c.ruleKey || 'B2';
-        return map;
-    }
-    CARules.getRulesForPalette = getRulesForPalette;
-    function setRuleForColor(colorId, ruleKey) {
-        let map = {};
-        try {
-            const raw = localStorage.getItem(LS_KEY);
-            if (raw)
-                map = JSON.parse(raw);
-        }
-        catch { }
-        map[colorId] = rules[ruleKey] ? ruleKey : 'B2';
-        try {
-            localStorage.setItem(LS_KEY, JSON.stringify(map));
-        }
-        catch { }
-    }
-    CARules.setRuleForColor = setRuleForColor;
-    function decideBirthColor(ctx, palette, selectedId, ruleMap) {
-        const eligible = [];
-        for (const c of palette) {
-            const rk = ruleMap[c.id] || c.ruleKey || 'B2';
-            const rule = getRule(rk);
-            if (rule.fn(ctx, c.value)) {
-                const n = ctx.byColor.get(c.value) || 0;
-                const pri = (c.id === selectedId ? 1 : 2);
-                eligible.push({ color: c.value, n, pri });
+    // Majority rule with threshold >=2 same-colored neighbors
+    const majority2 = {
+        key: 'majority2',
+        description: 'Birth if at least 2 neighbors share a color; pick that color',
+        birth: (ctx) => {
+            let bestColor = null;
+            let best = 0;
+            for (const [color, n] of ctx.counts.entries()) {
+                if (n > best) {
+                    best = n;
+                    bestColor = color;
+                }
             }
-        }
-        if (!eligible.length)
+            if (bestColor && best >= 2)
+                return bestColor;
             return null;
-        eligible.sort((a, b) => a.pri !== b.pri ? a.pri - b.pri : (b.n - a.n));
-        return eligible[0].color;
-    }
-    CARules.decideBirthColor = decideBirthColor;
+        }
+    };
+    // Tie-break: prefer darker majority (fallback)
+    const majority2PreferDark = {
+        key: 'majority2_dark',
+        description: 'Like majority2; on ties prefer darker color',
+        birth: (ctx) => {
+            let best = 0;
+            const candidates = [];
+            for (const [color, n] of ctx.counts.entries()) {
+                if (n > best) {
+                    best = n;
+                    candidates.length = 0;
+                    candidates.push(color);
+                }
+                else if (n === best) {
+                    candidates.push(color);
+                }
+            }
+            if (best >= 2 && candidates.length) {
+                if (candidates.length === 1)
+                    return candidates[0];
+                const lum = (hex) => {
+                    const p = (s) => parseInt(s, 16) / 255;
+                    const h = hex.replace('#', '');
+                    const r = p(h.slice(0, 2)), g = p(h.slice(2, 4)), b = p(h.slice(4, 6));
+                    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+                };
+                candidates.sort((a, b) => lum(a) - lum(b));
+                return candidates[0];
+            }
+            return null;
+        }
+    };
+    const registry = {
+        [majority2.key]: majority2,
+        [majority2PreferDark.key]: majority2PreferDark,
+    };
+    function getRule(key) { return registry[key] || majority2; }
+    CARules.getRule = getRule;
+    function list() { return Object.values(registry); }
+    CARules.list = list;
 })(CARules || (CARules = {}));
 /// <reference path="./ca_rules.ts" />
 /* Clean TypeScript build for Honeycomb Circles Simulator */

@@ -1144,7 +1144,7 @@ function main() {
 const appRoot = document.getElementById('app');
 const sideToggle = document.getElementById('sideToggle');
 if (appRoot && sideToggle) {
-    const LS_SIDE = 'ui.side.collapsed.v2';
+    const LS_SIDE = 'ui.side.collapsed.v3';
     try {
         if (localStorage.getItem(LS_SIDE) === '1')
             appRoot.classList.add('collapsed');
@@ -1163,6 +1163,9 @@ const diagOut = document.getElementById('diagOutput');
 if (btnDiag && diagOut) {
     btnDiag.onclick = () => {
         var _a, _b, _c;
+        const det = document.getElementById('diagDetails');
+        if (det)
+            det.open = true;
         const counts = new Map();
         const total = ((_b = (_a = window.honeyModel) === null || _a === void 0 ? void 0 : _a.order) === null || _b === void 0 ? void 0 : _b.length) || 0;
         const map = (_c = window.honeyModel) === null || _c === void 0 ? void 0 : _c.colorByKey;
@@ -1172,12 +1175,13 @@ if (btnDiag && diagOut) {
         const rows = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
         const html = rows.map(([col, c]) => {
             const pct = total ? Math.round(1000 * c / total) / 10 : 0;
-            return `<div class="diag-row"><span class="swatch" style="background:${col}"></span><span>${col}</span><span class="count">${c} (${pct}%)</span></div>`;
+            return '<div class="diag-row"><span class="swatch" style="background:' + col + '"></span><span>' + col + '</span><span class="count">' + c + ' (' + pct + '%)</span></div>';
         }).join('');
-        diagOut.innerHTML = html || '<div class="diag-row">No colored circles yet.</div>';
+        diagOut.innerHTML = html || '<div class=\"diag-row\">No colored circles yet.</div>';
     };
 }
-document.addEventListener('DOMContentLoaded', main);
+document.addEventListener('DOMContentLoaded', () => { const det = document.getElementById('diagDetails'); if (det)
+    det.removeAttribute('open'); main(); });
 function nearestTwoFromPalette(rgb, palette) {
     let bestA = '#000000', bestB = '#000000';
     let da = Infinity, db = Infinity;

@@ -54,3 +54,6 @@ circle.preview{fill:#fff;fill-opacity:0.25;stroke:#fff;stroke-dasharray:4 3;stro
 details.diag{ margin-top:16px; border-top:1px solid var(--border); padding-top:12px }
 details.diag > summary{ cursor:pointer; list-style:none; font-size:14px; color:#cfd3dc; margin-bottom:8px }
 details.diag > summary::-webkit-details-marker{ display:none }
+
+details.diag:not([open]) > *:not(summary){ display:none }
+

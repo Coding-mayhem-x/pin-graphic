@@ -485,7 +485,7 @@ function main() {
   const appRoot = document.getElementById('app');
   const sideToggle = document.getElementById('sideToggle') as HTMLButtonElement | null;
   if (appRoot && sideToggle){
-    const LS_SIDE = 'ui.side.collapsed.v2';
+    const LS_SIDE = 'ui.side.collapsed.v3';
     try { if (localStorage.getItem(LS_SIDE)==='1') appRoot.classList.add('collapsed'); } catch {}
     sideToggle.onclick = () => {
       appRoot.classList.toggle('collapsed');
@@ -496,18 +496,20 @@ function main() {
   const diagOut = document.getElementById('diagOutput');
   if (btnDiag && diagOut){
     btnDiag.onclick = () => {
+      const det = document.getElementById('diagDetails') as HTMLDetailsElement | null; if(det) det.open = true;
       const counts = new Map<string, number>();
       const total = (window as any).honeyModel?.order?.length || 0;
       const map: Map<string,string> = (window as any).honeyModel?.colorByKey as any;
       if (map && (map as any).forEach){ (map as any).forEach((col:string)=>{ counts.set(col,(counts.get(col)||0)+1); }); }
       const rows = Array.from(counts.entries()).sort((a,b)=> b[1]-a[1]);
-      const html = rows.map(([col,c]) => {
+            const html = rows.map(([col,c]) => {
         const pct = total ? Math.round(1000*c/total)/10 : 0;
-        return `<div class="diag-row"><span class="swatch" style="background:${col}"></span><span>${col}</span><span class="count">${c} (${pct}%)</span></div>`;
+        return '<div class="diag-row"><span class="swatch" style="background:' + col + '"></span><span>' + col + '</span><span class="count">' + c + ' (' + pct + '%)</span></div>';
       }).join('');
-      (diagOut as any).innerHTML = html || '<div class="diag-row">No colored circles yet.</div>';
+      (diagOut as any).innerHTML = html || '<div class=\"diag-row\">No colored circles yet.</div>';
     };
-  }document.addEventListener('DOMContentLoaded', main);
+  }
+  document.addEventListener('DOMContentLoaded', ()=>{ const det=document.getElementById('diagDetails') as HTMLDetailsElement|null; if(det) det.removeAttribute('open'); main(); });
 function nearestTwoFromPalette(rgb: RGB, palette: ColorEntry[]): {a:string,b:string, da:number, db:number} {
   let bestA = '#000000', bestB = '#000000'; let da = Infinity, db = Infinity;
   for (const e of palette){ const pr = parseCssColorToRgb(e.value) || {r:0,g:0,b:0}; const d = rgbDist2(rgb, pr); if (d < da) { db = da; bestB = bestA; da = d; bestA = e.value; } else if (d < db) { db = d; bestB = e.value; } }
@@ -537,6 +539,14 @@ class ImageSampler {
 }
 function srgbToLinear(v:number){ v/=255; return v<=0.04045? v/12.92 : Math.pow((v+0.055)/1.055,2.4); }
 function rgbDist2(a: RGB, b: RGB){ const ar=srgbToLinear(a.r), ag=srgbToLinear(a.g), ab=srgbToLinear(a.b); const br=srgbToLinear(b.r), bg=srgbToLinear(b.g), bb=srgbToLinear(b.b); const dr=ar-br, dg=ag-bg, db=ab-bb; return dr*dr+dg*dg+db*db; }
+
+
+
+
+
+
+
+
 
 
 

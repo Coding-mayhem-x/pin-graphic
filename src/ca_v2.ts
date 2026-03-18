@@ -110,3 +110,61 @@ interface Window { honeyModel?: any; }
   document.addEventListener('DOMContentLoaded', rewire);
 })();
 
+// CA v2 update: iterate over all existing color islands (components), not just colors.
+(function(){
+  const g:any = (window as any); g.__caV2 = g.__caV2 || {}; if(g.__caV2.compIdx===undefined) g.__caV2.compIdx=0;
+
+  function colorsPresent(model:any): string[]{
+    const s = new Set<string>(); if(model && model.colorByKey){ for(const v of model.colorByKey.values()) if(v) s.add(v); }
+    return Array.from(s.values());
+  }
+  function allComponents(model:any): {color:string, comp:any[]}[]{
+    const out: {color:string, comp:any[]}[] = []; for(const col of colorsPresent(model)){ const comps = model.componentsOfColor ? model.componentsOfColor(col) : []; for(const c of comps){ if(c && c.length) out.push({color:col, comp:c}); } }
+    // stable order: smallest first to help tiny islands
+    out.sort((a,b)=>a.comp.length-b.comp.length);
+    return out;
+  }
+  function freeNeighbors(model:any, comp:any[]): any[]{ return model.freeNeighbors ? model.freeNeighbors(comp) : []; }
+  function neighCounts(model:any, a:any): Map<string,number>{ const m=new Map<string,number>(); for(const n of model.neighbors(a)){ const nk = model.key(n); if(model.placed.has(nk)){ const c=model.colorByKey.get(nk); if(c) m.set(c,(m.get(c)||0)+1); } } return m; }
+
+  // Interaction aware rule: prefer self if adjacent; if also adjacent to others, prefer boundary cells (more mixed) to encourage touching.
+  function pickForComponent(model:any, entry:{color:string, comp:any[]}): {a:any,color:string}|null{
+    const frees = freeNeighbors(model, entry.comp); if(!frees.length) return null;
+    let best:any=null;
+    for(const f of frees){
+      const by = neighCounts(model,f); const total = Array.from(by.values()).reduce((s,n)=>s+n,0); const nSame = by.get(entry.color)||0; const nDiff = total - nSame;
+      if(total===0) continue; // ignore isolated holes; we want to grow where there is contact
+      // Score: prioritize boundary touching (nSame>=1 and nDiff>=1), then pure self (nSame>=1), then mixed (total>=2)
+      let ok=false; let score=-1;
+      if(nSame>=1 && nDiff>=1){ ok=true; score = 100 + nSame*10 + nDiff*5; }
+      else if(nSame>=1){ ok=true; score = 80 + nSame*10; }
+      else if(total>=2){ ok=true; score = 60 + nDiff*5; }
+      if(ok){ const pt=model.axialToPoint(f); if(!model.withinArea(pt)) continue; if(!best || score>best.score) best={a:f,color:entry.color,score}; }
+    }
+    // If still none, allow seeding next to component (no neighbors filter) to unblock tiny singles
+    if(!best){ for(const f of frees){ const pt=model.axialToPoint(f); if(model.withinArea(pt)){ best={a:f,color:entry.color,score:10}; break; } } }
+    return best ? {a:best.a,color:best.color} : null;
+  }
+
+  function placeCAV2_AllIslands(){
+    const model:any = (window as any).honeyModel; if(!model) return false;
+    const comps = allComponents(model); if(!comps.length) return false;
+    const g:any = (window as any).__caV2; const start = (g && typeof g.compIdx==='number') ? g.compIdx % comps.length : 0;
+    for(let i=0;i<comps.length;i++){
+      const idx = (start + i) % comps.length; const entry = comps[idx];
+      const pick = pickForComponent(model, entry);
+      if(pick){ const k = model.key(pick.a); model.frontier.delete(k); const p = model.axialToPoint(pick.a); if(!model.withinArea(p)) continue; model.place(pick.a, pick.color); model.renderCircle(pick.a, p); model.updateCount(); (window as any).__caV2.compIdx = idx+1; return true; }
+    }
+    (window as any).__caV2.compIdx = (start + 1) % comps.length; // advance to avoid getting stuck
+    return false;
+  }
+
+  function rewireAllIslands(){
+    const sel = document.getElementById('strategySelect') as HTMLSelectElement | null; if(!sel) return;
+    if(!Array.from(sel.options).some(o=>o.value==='ca-v2')){ const opt=document.createElement('option'); opt.value='ca-v2'; opt.textContent='CA v2'; sel.appendChild(opt); }
+    const btnAny = document.getElementById('btnAddRandomAny'); if(btnAny){ btnAny.addEventListener('click', function(ev){ const cur = (sel.value||''); if(cur==='ca-v2'){ ev.stopImmediatePropagation(); ev.preventDefault(); placeCAV2_AllIslands(); } }, true); }
+    const btnSel = document.getElementById('btnAddRandomColor'); if(btnSel){ btnSel.addEventListener('click', function(ev){ const cur = (sel.value||''); if(cur==='ca-v2'){ ev.stopImmediatePropagation(); ev.preventDefault(); placeCAV2_AllIslands(); } }, true); }
+  }
+
+  document.addEventListener('DOMContentLoaded', rewireAllIslands);
+})();

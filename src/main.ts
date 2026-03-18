@@ -157,7 +157,7 @@ class Honeycomb {
     this.preview.style.pointerEvents = 'none';
     this.svg.appendChild(this.preview);
     this.diameterLabel = document.getElementById('diameterPx')!; this.countLabel = document.getElementById('count')!;
-    this.  // CA step using per-color rules from CARules
+    this.reset(); const ro = new ResizeObserver(() => this.resizeToHost(host)); ro.observe(host); this.resizeToHost(host);
   addCAPaletteStep(palette: ColorEntry[], selectedId?: string): boolean {
     this.ensureSeed();
     let best: { a: Axial; score: number; color: string } | null = null;
@@ -186,7 +186,7 @@ class Honeycomb {
       if (!this.withinArea(p)) return false; this.place(b, best.color); this.renderCircle(b, p); this.updateCount(); return true;
     }
     return false;
-  }reset(); const ro = new ResizeObserver(() => this.resizeToHost(host)); ro.observe(host); this.resizeToHost(host);
+  }
   }
 
   private key(a: Axial): string { return `${a.u},${a.v}`; }

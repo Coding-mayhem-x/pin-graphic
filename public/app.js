@@ -228,8 +228,11 @@ class Honeycomb {
         this.svg.appendChild(this.preview);
         this.diameterLabel = document.getElementById('diameterPx');
         this.countLabel = document.getElementById('count');
-        this. // CA step using per-color rules from CARules
-            addCAPaletteStep(palette, ColorEntry[], selectedId ?  : string);
+        this.reset();
+        const ro = new ResizeObserver(() => this.resizeToHost(host));
+        ro.observe(host);
+        this.resizeToHost(host);
+        addCAPaletteStep(palette, ColorEntry[], selectedId ?  : string);
         boolean;
         {
             this.ensureSeed();
@@ -276,10 +279,6 @@ class Honeycomb {
             }
             return false;
         }
-        reset();
-        const ro = new ResizeObserver(() => this.resizeToHost(host));
-        ro.observe(host);
-        this.resizeToHost(host);
     }
     key(a) { return `${a.u},${a.v}`; }
     axialToPoint(a) { const R = this.radius; const dx = Math.sqrt(3) * R; const up = { x: 0, y: 2 * R }; const upr = { x: dx, y: R }; return { x: a.u * upr.x + a.v * up.x, y: a.u * upr.y + a.v * up.y }; }

@@ -466,6 +466,169 @@ var CARules;
     }
     document.addEventListener('DOMContentLoaded', rewireAllIslands);
 })();
+// CA v2 reimplementation: strict round-robin across colors and their components
+(function () {
+    const G = window;
+    G.CA_V2 = G.CA_V2 || { state: { colorOrder: [], colorPtr: 0, compPtr: {} } };
+    function model() { return window.honeyModel; }
+    function colorsPresent() {
+        const m = model();
+        const s = new Set();
+        if (m && m.colorByKey) {
+            for (const v of m.colorByKey.values())
+                if (v)
+                    s.add(v);
+        }
+        return Array.from(s.values());
+    }
+    function refreshColorOrder() {
+        const st = window.CA_V2.state;
+        const before = new Set(st.colorOrder);
+        const now = colorsPresent().sort();
+        st.colorOrder = now;
+        for (const c of now) {
+            if (!(c in st.compPtr))
+                st.compPtr[c] = 0;
+        }
+        // drop compPtr for missing colors
+        for (const c of Object.keys(st.compPtr)) {
+            if (!now.includes(c))
+                delete st.compPtr[c];
+        }
+        if (st.colorPtr >= st.colorOrder.length)
+            st.colorPtr = 0;
+    }
+    function componentsOfColor(col) { const m = model(); return (m && m.componentsOfColor) ? m.componentsOfColor(col) : []; }
+    function freeNeighbors(comp) { const m = model(); return (m && m.freeNeighbors) ? m.freeNeighbors(comp) : []; }
+    function key(a) { const m = model(); return m.key(a); }
+    function within(a) { const m = model(); return m.withinArea(m.axialToPoint(a)); }
+    function neighCounts(a) { const m = model(); const map = new Map(); for (const n of m.neighbors(a)) {
+        const nk = key(n);
+        if (m.placed.has(nk)) {
+            const col = m.colorByKey.get(nk);
+            if (col)
+                map.set(col, (map.get(col) || 0) + 1);
+        }
+    } return map; }
+    function tryGrowComponent(col, comp) {
+        const m = model();
+        const frees = freeNeighbors(comp);
+        if (!frees || !frees.length)
+            return null;
+        // 1) Prefer boundary that touches self and others
+        let best = null;
+        for (const f of frees) {
+            const by = neighCounts(f);
+            const total = Array.from(by.values()).reduce((s, n) => s + n, 0);
+            const nSame = by.get(col) || 0;
+            const nDiff = total - nSame;
+            if (total > 0 && nSame >= 1 && nDiff >= 1 && within(f)) {
+                const score = 100 + nSame * 10 + nDiff * 5;
+                if (!best || score > best.score)
+                    best = { a: f, color: col, score };
+            }
+        }
+        if (best)
+            return { a: best.a, color: col };
+        // 2) Self-adjacent growth
+        for (const f of frees) {
+            const by = neighCounts(f);
+            const nSame = by.get(col) || 0;
+            if (nSame >= 1 && within(f))
+                return { a: f, color: col };
+        }
+        // 3) Gentle bridging where total >= 2
+        for (const f of frees) {
+            const by = neighCounts(f);
+            const total = Array.from(by.values()).reduce((s, n) => s + n, 0);
+            if (total >= 2 && within(f))
+                return { a: f, color: col };
+        }
+        // 4) Last resort seed next to component
+        for (const f of frees) {
+            if (within(f))
+                return { a: f, color: col };
+        }
+        return null;
+    }
+    function placePick(pick) {
+        const m = model();
+        const k = key(pick.a);
+        m.frontier.delete(k);
+        const p = m.axialToPoint(pick.a);
+        if (!m.withinArea(p))
+            return false;
+        m.place(pick.a, pick.color);
+        m.renderCircle(pick.a, p);
+        m.updateCount();
+        return true;
+    }
+    function step() {
+        const m = model();
+        if (!m)
+            return false;
+        refreshColorOrder();
+        const st = window.CA_V2.state;
+        const colors = st.colorOrder;
+        if (!colors.length)
+            return false;
+        // total attempts bounded by sum of components across colors
+        let totalComps = 0;
+        const perColorComps = {};
+        for (const col of colors) {
+            const comps = componentsOfColor(col).filter(c => c && c.length);
+            perColorComps[col] = comps;
+            totalComps += comps.length;
+            if (!(col in st.compPtr))
+                st.compPtr[col] = 0;
+        }
+        if (totalComps === 0)
+            return false;
+        for (let tries = 0; tries < totalComps; tries++) {
+            const col = colors[st.colorPtr % colors.length];
+            const comps = perColorComps[col];
+            if (!comps.length) {
+                st.colorPtr = (st.colorPtr + 1) % colors.length;
+                continue;
+            }
+            const idx = st.compPtr[col] % comps.length;
+            const comp = comps[idx];
+            const pick = tryGrowComponent(col, comp);
+            st.compPtr[col] = (st.compPtr[col] + 1) % Math.max(1, comps.length);
+            st.colorPtr = (st.colorPtr + 1) % colors.length;
+            if (pick) {
+                return placePick(pick);
+            }
+        }
+        return false;
+    }
+    // Set CA v2 to call this step
+    function wire() {
+        const sel = document.getElementById('strategySelect');
+        if (!sel)
+            return;
+        if (!Array.from(sel.options).some(o => o.value === 'ca-v2')) {
+            const opt = document.createElement('option');
+            opt.value = 'ca-v2';
+            opt.textContent = 'CA v2';
+            sel.appendChild(opt);
+        }
+        const call = (ev) => { const cur = (sel.value || ''); if (cur === 'ca-v2') {
+            ev.stopImmediatePropagation();
+            ev.preventDefault();
+            step();
+        } };
+        const any = document.getElementById('btnAddRandomAny');
+        if (any) {
+            any.addEventListener('click', call, true);
+        }
+        const selBtn = document.getElementById('btnAddRandomColor');
+        if (selBtn) {
+            selBtn.addEventListener('click', call, true);
+        }
+    }
+    document.addEventListener('DOMContentLoaded', wire);
+})();
 /// <reference path="./ca_rules.ts" />
 /* Clean TypeScript build for Honeycomb Circles Simulator */
 const LS_PALETTE_KEY = 'honeycomb.palette.v1';

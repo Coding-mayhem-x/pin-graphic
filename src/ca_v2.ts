@@ -1,4 +1,4 @@
-// src/ca_v2.ts
+﻿// src/ca_v2.ts
 // CA v2: per-color birth + minimal-island focus + bridging
 
 interface Window { honeyModel?: any; }
@@ -31,18 +31,18 @@ type ColorEntry = { id: string; name: string; value: string };
     const selected = selectedId ? (palette.find(p=>p.id===selectedId)?.value) : undefined;
     // 1) If minimal island exists, try to grow it first
     const min = pickMinimalIsland(model, palette);
-    if(min){ const frees = model.freeNeighbors(min.comp); let best:any=null; for(const f of frees){ const by=frontierNeighbors(model,f); const ctx={total:Array.from(by.values()).reduce((s,n)=>s+n,0), counts: by}; let pick:string|null=null; if(selected && (ctx.total>=2)) pick=selected; if(!pick && CARules && CARules.getRule){ pick = CARules.getRule('majority2').birth(ctx); } if(pick){ const pt=model.axialToPoint(f); if(model.withinArea(pt)) { best={a:f,color:pick}; break; } } }
+    if(min){ const frees = model.freeNeighbors(min.comp); let best:any=null; for(const f of frees){ const by=frontierNeighbors(model,f); const ctx={total:Array.from(by.values()).reduce((s,n)=>s+n,0), counts: by}; let pick:string|null=null; if(selected && (ctx.total>=2)) pick=selected; else if(selected && (by.get(selected)||0)>=1 && (min && min.color===selected)) pick=selected; if(!pick && (window as any).CARules && (window as any).CARules.getRule){ pick = CARules.getRule('majority2').birth(ctx); } if(pick){ const pt=model.axialToPoint(f); if(model.withinArea(pt)) { best={a:f,color:pick}; break; } } }
       if(best) return best;
     }
     // 2) Otherwise scan global frontier and use majority2 or bridging by selected
-    let best:any=null; for(const k of model.frontier){ const [u,v]=k.split(',').map((t:string)=>parseInt(t,10)); const a={u,v}; const by=frontierNeighbors(model,a); const total=Array.from(by.values()).reduce((s,n)=>s+n,0); if(total===0) continue; let pick:string|null=null; if(selected && total>=2) pick=selected; if(!pick && CARules && CARules.getRule){ pick = CARules.getRule('majority2').birth({total,counts:by}); } if(!pick) continue; const pt=model.axialToPoint(a); if(!model.withinArea(pt)) continue; // simple score: prefer fewer neighbors to help gaps
+    let best:any=null; for(const k of model.frontier){ const [u,v]=k.split(',').map((t:string)=>parseInt(t,10)); const a={u,v}; const by=frontierNeighbors(model,a); const total=Array.from(by.values()).reduce((s,n)=>s+n,0); if(total===0) continue; let pick:string|null=null; if(selected && total>=2) pick=selected; if(!pick && (window as any).CARules && (window as any).CARules.getRule){ pick = CARules.getRule('majority2').birth({total,counts:by}); } if(!pick) continue; const pt=model.axialToPoint(a); if(!model.withinArea(pt)) continue; // simple score: prefer fewer neighbors to help gaps
       const nSame = by.get(pick)||0; const score = (min?1:0)*1000 + nSame*10 - total; if(!best || score>best.score) best={a,color:pick,score}; }
     return best ? {a:best.a,color:best.color} : null;
   }
 
   function placeCAV2(){
     const model:any = getModel(); if(!model) return false;
-    const pal = (new (model.constructor?.name==='Honeycomb' ? (window as any).PaletteManager : (window as any).PaletteManager)());
+    const pal: any = (window as any).paletteManager;
     const palette = pal.colors; const selectedId = pal.selected?.id;
     const pick = findBestCAV2(model, palette, selectedId);
     if(!pick) return false; const k = key(pick.a); model.frontier.delete(k); const p = model.axialToPoint(pick.a); if(!model.withinArea(p)) return false; model.place(pick.a, pick.color); model.renderCircle(pick.a, p); model.updateCount(); return true;

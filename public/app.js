@@ -114,7 +114,9 @@ var CARules;
                 let pick = null;
                 if (selected && (ctx.total >= 2))
                     pick = selected;
-                if (!pick && CARules && CARules.getRule) {
+                else if (selected && (by.get(selected) || 0) >= 1 && (min && min.color === selected))
+                    pick = selected;
+                if (!pick && window.CARules && window.CARules.getRule) {
                     pick = CARules.getRule('majority2').birth(ctx);
                 }
                 if (pick) {
@@ -140,7 +142,7 @@ var CARules;
             let pick = null;
             if (selected && total >= 2)
                 pick = selected;
-            if (!pick && CARules && CARules.getRule) {
+            if (!pick && window.CARules && window.CARules.getRule) {
                 pick = CARules.getRule('majority2').birth({ total, counts: by });
             }
             if (!pick)
@@ -156,13 +158,13 @@ var CARules;
         return best ? { a: best.a, color: best.color } : null;
     }
     function placeCAV2() {
-        var _a, _b;
+        var _a;
         const model = getModel();
         if (!model)
             return false;
-        const pal = (new (((_a = model.constructor) === null || _a === void 0 ? void 0 : _a.name) === 'Honeycomb' ? window.PaletteManager : window.PaletteManager)());
+        const pal = window.paletteManager;
         const palette = pal.colors;
-        const selectedId = (_b = pal.selected) === null || _b === void 0 ? void 0 : _b.id;
+        const selectedId = (_a = pal.selected) === null || _a === void 0 ? void 0 : _a.id;
         const pick = findBestCAV2(model, palette, selectedId);
         if (!pick)
             return false;
@@ -997,6 +999,7 @@ function main() {
     model.setColorProvider(() => { var _a; return (_a = palette.selected) === null || _a === void 0 ? void 0 : _a.value; });
     model.enableManual();
     window.honeyModel = model;
+    window.paletteManager = palette;
     document.getElementById('btnAddOne').onclick = () => model.addOne();
     document.getElementById('btnAddSix').onclick = () => model.addSix();
     document.getElementById('btnAddRing').onclick = () => model.addRing();

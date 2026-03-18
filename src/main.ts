@@ -446,7 +446,7 @@ class Honeycomb {
 }
 
 function main() {
-  const host = document.getElementById('svgHost'); if (!host) return; const model = new Honeycomb(host as HTMLElement); const palette = new PaletteManager(); model.setColorProvider(() => palette.selected?.value); model.enableManual(); (window as any).honeyModel = model;
+  const host = document.getElementById('svgHost'); if (!host) return; const model = new Honeycomb(host as HTMLElement); const palette = new PaletteManager(); model.setColorProvider(() => palette.selected?.value); model.enableManual(); (window as any).honeyModel = model; (window as any).paletteManager = palette;
   (document.getElementById('btnAddOne') as HTMLButtonElement).onclick = () => model.addOne();
   (document.getElementById('btnAddSix') as HTMLButtonElement).onclick = () => model.addSix();
   (document.getElementById('btnAddRing') as HTMLButtonElement).onclick = () => model.addRing();

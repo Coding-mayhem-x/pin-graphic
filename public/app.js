@@ -615,54 +615,6 @@ class Honeycomb {
                 }
             }
         }
-        // CA step using per-color rules from CARules
-        addCAPaletteStep(palette, ColorEntry[], selectedId ?  : string);
-        boolean;
-        {
-            this.ensureSeed();
-            let best = null;
-            const ruleMap = window.CARules ? window.CARules.getRulesForPalette(palette) : {};
-            for (const k of this.frontier) {
-                const parts = k.split(',');
-                const a = { u: parseInt(parts[0], 10), v: parseInt(parts[1], 10) };
-                const neigh = this.neighbors(a);
-                const byColor = new Map();
-                let total = 0;
-                for (const n of neigh) {
-                    const nk = this.key(n);
-                    if (this.placed.has(nk)) {
-                        const col = this.colorByKey.get(nk);
-                        if (!col)
-                            continue;
-                        total++;
-                        byColor.set(col, (byColor.get(col) || 0) + 1);
-                    }
-                }
-                if (total === 0 || byColor.size === 0)
-                    continue;
-                const ctx = { total, byColor };
-                const pick = window.CARules ? window.CARules.decideBirthColor(ctx, palette, selectedId, ruleMap) : null;
-                if (!pick)
-                    continue;
-                const nSame = byColor.get(pick) || 0;
-                const score = total * 10 + nSame * 5;
-                if (!best || score > best.score)
-                    best = { a, score, color: pick };
-            }
-            if (best) {
-                const b = best.a;
-                const rem = this.key(b);
-                this.frontier.delete(rem);
-                const p = this.axialToPoint(b);
-                if (!this.withinArea(p))
-                    return false;
-                this.place(b, best.color);
-                this.renderCircle(b, p);
-                this.updateCount();
-                return true;
-            }
-            return false;
-        }
         return false;
     }
     addClockV3WithColor(color) {
@@ -738,6 +690,63 @@ class Honeycomb {
         }
         return this.placeAsNewInWedge(color, center);
     }
+    minFrontierRing() { let best = Infinity; for (const k of this.frontier) {
+        const [u, v] = k.split(',').map(Number);
+        const r = this.ring({ u, v });
+        if (r < best)
+            best = r;
+    } return best; }
+    // Cellular Automata (color-based) one step using external rules
+    addCAColorStep(ruleKey = "majority2") {
+        this.ensureSeed();
+        let best = null;
+        for (const k of this.frontier) {
+            const parts = k.split(',');
+            const a = { u: parseInt(parts[0], 10), v: parseInt(parts[1], 10) };
+            const neigh = this.neighbors(a);
+            const counts = new Map();
+            let total = 0;
+            for (const n of neigh) {
+                const nk = this.key(n);
+                if (this.placed.has(nk)) {
+                    const col = this.colorByKey.get(nk);
+                    if (!col)
+                        continue; // only consider colored neighbors
+                    total++;
+                    counts.set(col, (counts.get(col) || 0) + 1);
+                }
+            }
+            if (total === 0 || counts.size === 0)
+                continue;
+            const rule = (CARules && CARules.getRule) ? CARules.getRule(ruleKey) : null;
+            const birthColor = rule ? rule.birth({ total, counts }) : null;
+            if (!birthColor)
+                continue;
+            // score: prefer more neighbors and stronger majority
+            let maxSame = 0;
+            for (const v of counts.values()) {
+                if (v > maxSame)
+                    maxSame = v;
+            }
+            const score = total * 10 + maxSame;
+            if (!best || score > best.score) {
+                best = { a, score, color: birthColor };
+            }
+        }
+        if (best) {
+            const b = best.a;
+            const k = this.key(b);
+            this.frontier.delete(k);
+            const p = this.axialToPoint(b);
+            if (!this.withinArea(p))
+                return false;
+            this.place(b, best.color);
+            this.renderCircle(b, p);
+            this.updateCount();
+            return true;
+        }
+        return false;
+    }
     // CA step using per-color rules from CARules
     addCAPaletteStep(palette, selectedId) {
         this.ensureSeed();
@@ -784,85 +793,18 @@ class Honeycomb {
         }
         return false;
     }
+    reset({ this: , placed, clear }) { }
 }
-minFrontierRing();
-number;
-{
-    let best = Infinity;
-    for (const k of this.frontier) {
-        const [u, v] = k.split(',').map(Number);
-        const r = this.ring({ u, v });
-        if (r < best)
-            best = r;
-    }
-    return best;
-}
-// Cellular Automata (color-based) one step using external rules
-addCAColorStep(ruleKey, string = "majority2");
-boolean;
-{
-    this.ensureSeed();
-    let best = null;
-    for (const k of this.frontier) {
-        const parts = k.split(',');
-        const a = { u: parseInt(parts[0], 10), v: parseInt(parts[1], 10) };
-        const neigh = this.neighbors(a);
-        const counts = new Map();
-        let total = 0;
-        for (const n of neigh) {
-            const nk = this.key(n);
-            if (this.placed.has(nk)) {
-                const col = this.colorByKey.get(nk);
-                if (!col)
-                    continue; // only consider colored neighbors
-                total++;
-                counts.set(col, (counts.get(col) || 0) + 1);
-            }
-        }
-        if (total === 0 || counts.size === 0)
-            continue;
-        const rule = (CARules && CARules.getRule) ? CARules.getRule(ruleKey) : null;
-        const birthColor = rule ? rule.birth({ total, counts }) : null;
-        if (!birthColor)
-            continue;
-        // score: prefer more neighbors and stronger majority
-        let maxSame = 0;
-        for (const v of counts.values()) {
-            if (v > maxSame)
-                maxSame = v;
-        }
-        const score = total * 10 + maxSame;
-        if (!best || score > best.score) {
-            best = { a, score, color: birthColor };
-        }
-    }
-    if (best) {
-        const b = best.a;
-        const k = this.key(b);
-        this.frontier.delete(k);
-        const p = this.axialToPoint(b);
-        if (!this.withinArea(p))
-            return false;
-        this.place(b, best.color);
-        this.renderCircle(b, p);
-        this.updateCount();
-        return true;
-    }
-    return false;
-}
-reset();
-{
-    this.placed.clear();
-    this.frontier.clear();
-    this.order.length = 0;
-    this.colorByKey.clear();
-    this.gCircles.replaceChildren();
-    this.sizeFactorByKey.clear();
-    this.place({ u: 0, v: 0 });
-    const p0 = this.axialToPoint({ u: 0, v: 0 });
-    this.renderCircle({ u: 0, v: 0 }, p0);
-    this.updateCount();
-}
+();
+this.frontier.clear();
+this.order.length = 0;
+this.colorByKey.clear();
+this.gCircles.replaceChildren();
+this.sizeFactorByKey.clear();
+this.place({ u: 0, v: 0 });
+const p0 = this.axialToPoint({ u: 0, v: 0 });
+this.renderCircle({ u: 0, v: 0 }, p0);
+this.updateCount();
 getSvgBackgroundRgb();
 RGB;
 {
@@ -1020,7 +962,6 @@ function main() {
             model.addClockV2WithColor(pick);
         }
         else if (strat === 'clock3') { }
-        else if (strat === 'ca-color') { }
         else if (strat === 'ca-palette') {
             model.addCAPaletteStep(palette.colors, (palette.selected && palette.selected.id) || undefined);
         }
@@ -1039,7 +980,7 @@ function main() {
     else if (strat === 'clock3')
         model.addClockV3WithColor(pick);
     else if (strat === 'ca-color')
-        model.addCAPaletteStep(palette.colors, (palette.selected && palette.selected.id) || undefined);
+        model.addCAColorStep('majority2');
     else
         model.addRandomWithColor(pick); };
     const imgSampler = new ImageSampler();

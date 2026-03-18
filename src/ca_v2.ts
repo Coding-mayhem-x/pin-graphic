@@ -3,11 +3,8 @@
 
 interface Window { honeyModel?: any; }
 
-declare var CARules: any;
 
-type Axial = { u: number; v: number };
 
-type ColorEntry = { id: string; name: string; value: string };
 
 (function(){
   function getModel(): any { return (window as any).honeyModel; }

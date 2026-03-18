@@ -1,4 +1,4 @@
-/// <reference path="./ca_rules.ts" />
+﻿/// <reference path="./ca_rules.ts" />
 /* Clean TypeScript build for Honeycomb Circles Simulator */
 
 type Axial = { u: number; v: number };
@@ -446,7 +446,7 @@ class Honeycomb {
 }
 
 function main() {
-  const host = document.getElementById('svgHost'); if (!host) return; const model = new Honeycomb(host as HTMLElement); const palette = new PaletteManager(); model.setColorProvider(() => palette.selected?.value); model.enableManual();
+  const host = document.getElementById('svgHost'); if (!host) return; const model = new Honeycomb(host as HTMLElement); const palette = new PaletteManager(); model.setColorProvider(() => palette.selected?.value); model.enableManual(); (window as any).honeyModel = model;
   (document.getElementById('btnAddOne') as HTMLButtonElement).onclick = () => model.addOne();
   (document.getElementById('btnAddSix') as HTMLButtonElement).onclick = () => model.addSix();
   (document.getElementById('btnAddRing') as HTMLButtonElement).onclick = () => model.addRing();

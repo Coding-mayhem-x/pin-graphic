@@ -1015,6 +1015,7 @@ function main() {
     } for (const c of picks) {
         model.addAnywhereWithColor(c) || model.addRandomWithColor(c);
     } };
+    document.getElementById('btnReset').onclick = () => { model.reset(); };
     document.getElementById('btnAddRandomColor').onclick = () => {
         var _a;
         const strat = ((_a = document.getElementById('strategySelect')) === null || _a === void 0 ? void 0 : _a.value) || 'frontier';

@@ -451,6 +451,7 @@ function main() {
   (document.getElementById('btnAddSix') as HTMLButtonElement).onclick = () => model.addSix();
   (document.getElementById('btnAddRing') as HTMLButtonElement).onclick = () => model.addRing();
     (document.getElementById('btnAddRng') as HTMLButtonElement).onclick = () => { const cols = (new PaletteManager()).colors.map(c=>c.value); if(!cols.length) return; const total = Math.ceil(cols.length * 1.7); const picks: string[] = []; for(const c of cols) picks.push(c); while(picks.length < total){ picks.push(cols[Math.floor(Math.random()*cols.length)]); } for(let i=picks.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); const t=picks[i]; picks[i]=picks[j]; picks[j]=t; } for(const c of picks){ (model as any).addAnywhereWithColor(c) || model.addRandomWithColor(c); } };
+  (document.getElementById('btnReset') as HTMLButtonElement).onclick = () => { model.reset(); };
   (document.getElementById('btnAddRandomColor') as HTMLButtonElement).onclick = () => {
     const strat = (document.getElementById('strategySelect') as HTMLSelectElement)?.value || 'frontier';
     if (strat === 'clock') { const all = palette.colors; if (!all.length) return; const pick = all[Math.floor(Math.random() * all.length)].value; model.addClockWithColor(pick); }

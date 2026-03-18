@@ -1,4 +1,4 @@
-﻿name: Deploy static site to Pages
+﻿name: Build and Deploy static site
 
 on:
   push:
@@ -20,10 +20,47 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Build TypeScript
+        run: npx tsc -p tsconfig.json --outFile public/app.js
+
+      - name: Ensure start page exists
+        run: |
+          if [ ! -f public/index.html ]; then
+            mkdir -p public
+            cat > public/index.html <<'HTML'
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>pin-graphic</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app"></div>
+  <script src="app.js"></script>
+</body>
+</html>
+HTML
+          fi
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
       - name: Upload static site (public/)
         uses: actions/upload-pages-artifact@v3
         with:
           path: public
+
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

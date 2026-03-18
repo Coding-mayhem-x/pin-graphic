@@ -1144,7 +1144,7 @@ function main() {
 const appRoot = document.getElementById('app');
 const sideToggle = document.getElementById('sideToggle');
 if (appRoot && sideToggle) {
-    const LS_SIDE = 'ui.side.collapsed';
+    const LS_SIDE = 'ui.side.collapsed.v2';
     try {
         if (localStorage.getItem(LS_SIDE) === '1')
             appRoot.classList.add('collapsed');

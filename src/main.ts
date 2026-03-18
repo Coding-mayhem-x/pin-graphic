@@ -485,7 +485,7 @@ function main() {
   const appRoot = document.getElementById('app');
   const sideToggle = document.getElementById('sideToggle') as HTMLButtonElement | null;
   if (appRoot && sideToggle){
-    const LS_SIDE = 'ui.side.collapsed';
+    const LS_SIDE = 'ui.side.collapsed.v2';
     try { if (localStorage.getItem(LS_SIDE)==='1') appRoot.classList.add('collapsed'); } catch {}
     sideToggle.onclick = () => {
       appRoot.classList.toggle('collapsed');
@@ -537,6 +537,7 @@ class ImageSampler {
 }
 function srgbToLinear(v:number){ v/=255; return v<=0.04045? v/12.92 : Math.pow((v+0.055)/1.055,2.4); }
 function rgbDist2(a: RGB, b: RGB){ const ar=srgbToLinear(a.r), ag=srgbToLinear(a.g), ab=srgbToLinear(a.b); const br=srgbToLinear(b.r), bg=srgbToLinear(b.g), bb=srgbToLinear(b.b); const dr=ar-br, dg=ag-bg, db=ab-bb; return dr*dr+dg*dg+db*db; }
+
 
 
 

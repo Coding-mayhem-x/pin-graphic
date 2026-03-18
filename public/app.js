@@ -1162,10 +1162,10 @@ const btnDiag = document.getElementById('btnDiagCounts');
 const diagOut = document.getElementById('diagOutput');
 if (btnDiag && diagOut) {
     btnDiag.onclick = () => {
-        var _a;
+        var _a, _b, _c;
         const counts = new Map();
-        const total = ((_a = model.order) === null || _a === void 0 ? void 0 : _a.length) || 0;
-        const map = model.colorByKey;
+        const total = ((_b = (_a = window.honeyModel) === null || _a === void 0 ? void 0 : _a.order) === null || _b === void 0 ? void 0 : _b.length) || 0;
+        const map = (_c = window.honeyModel) === null || _c === void 0 ? void 0 : _c.colorByKey;
         if (map && map.forEach) {
             map.forEach((col) => { counts.set(col, (counts.get(col) || 0) + 1); });
         }

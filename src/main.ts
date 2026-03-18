@@ -497,8 +497,8 @@ function main() {
   if (btnDiag && diagOut){
     btnDiag.onclick = () => {
       const counts = new Map<string, number>();
-      const total = (model as any).order?.length || 0;
-      const map: Map<string,string> = (model as any).colorByKey as any;
+      const total = (window as any).honeyModel?.order?.length || 0;
+      const map: Map<string,string> = (window as any).honeyModel?.colorByKey as any;
       if (map && (map as any).forEach){ (map as any).forEach((col:string)=>{ counts.set(col,(counts.get(col)||0)+1); }); }
       const rows = Array.from(counts.entries()).sort((a,b)=> b[1]-a[1]);
       const html = rows.map(([col,c]) => {
@@ -537,6 +537,7 @@ class ImageSampler {
 }
 function srgbToLinear(v:number){ v/=255; return v<=0.04045? v/12.92 : Math.pow((v+0.055)/1.055,2.4); }
 function rgbDist2(a: RGB, b: RGB){ const ar=srgbToLinear(a.r), ag=srgbToLinear(a.g), ab=srgbToLinear(a.b); const br=srgbToLinear(b.r), bg=srgbToLinear(b.g), bb=srgbToLinear(b.b); const dr=ar-br, dg=ag-bg, db=ab-bb; return dr*dr+dg*dg+db*db; }
+
 
 
 

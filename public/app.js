@@ -64,7 +64,6 @@ var CARules;
 })(CARules || (CARules = {}));
 /// <reference path="./ca_rules.ts" />
 /* Clean TypeScript build for Honeycomb Circles Simulator */
-var _a;
 const LS_PALETTE_KEY = 'honeycomb.palette.v1';
 function parseCssColorToRgb(input) {
     if (!input)
@@ -689,6 +688,54 @@ class Honeycomb {
             }
         }
         return this.placeAsNewInWedge(color, center);
+        // CA step using per-color rules from CARules
+        addCAPaletteStep(palette, ColorEntry[], selectedId ?  : string);
+        boolean;
+        {
+            this.ensureSeed();
+            let best = null;
+            const ruleMap = window.CARules ? window.CARules.getRulesForPalette(palette) : {};
+            for (const k of this.frontier) {
+                const parts = k.split(',');
+                const a = { u: parseInt(parts[0], 10), v: parseInt(parts[1], 10) };
+                const neigh = this.neighbors(a);
+                const byColor = new Map();
+                let total = 0;
+                for (const n of neigh) {
+                    const nk = this.key(n);
+                    if (this.placed.has(nk)) {
+                        const col = this.colorByKey.get(nk);
+                        if (!col)
+                            continue;
+                        total++;
+                        byColor.set(col, (byColor.get(col) || 0) + 1);
+                    }
+                }
+                if (total === 0 || byColor.size === 0)
+                    continue;
+                const ctx = { total, byColor };
+                const pick = window.CARules ? window.CARules.decideBirthColor(ctx, palette, selectedId, ruleMap) : null;
+                if (!pick)
+                    continue;
+                const nSame = byColor.get(pick) || 0;
+                const score = total * 10 + nSame * 5;
+                if (!best || score > best.score)
+                    best = { a, score, color: pick };
+            }
+            if (best) {
+                const b = best.a;
+                const k2 = this.key(b);
+                this.frontier.delete(k2);
+                const p = this.axialToPoint(b);
+                if (!this.withinArea(p))
+                    return false;
+                this.place(b, best.color);
+                this.renderCircle(b, p);
+                this.updateCount();
+                return true;
+            }
+            return false;
+        }
     }
     minFrontierRing() { let best = Infinity; for (const k of this.frontier) {
         const [u, v] = k.split(',').map(Number);
@@ -747,179 +794,104 @@ class Honeycomb {
         }
         return false;
     }
-    // CA step using per-color rules from CARules
-    addCAPaletteStep(palette, selectedId) {
-        this.ensureSeed();
-        let best = null;
-        const ruleMap = window.CARules ? window.CARules.getRulesForPalette(palette) : {};
-        for (const k of this.frontier) {
-            const parts = k.split(',');
-            const a = { u: parseInt(parts[0], 10), v: parseInt(parts[1], 10) };
-            const neigh = this.neighbors(a);
-            const byColor = new Map();
-            let total = 0;
-            for (const n of neigh) {
-                const nk = this.key(n);
-                if (this.placed.has(nk)) {
-                    const col = this.colorByKey.get(nk);
-                    if (!col)
-                        continue;
-                    total++;
-                    byColor.set(col, (byColor.get(col) || 0) + 1);
-                }
-            }
-            if (total === 0 || byColor.size === 0)
-                continue;
-            const ctx = { total, byColor };
-            const pick = window.CARules ? window.CARules.decideBirthColor(ctx, palette, selectedId, ruleMap) : null;
-            if (!pick)
-                continue;
-            const nSame = byColor.get(pick) || 0;
-            const score = total * 10 + nSame * 5;
-            if (!best || score > best.score)
-                best = { a, score, color: pick };
-        }
-        if (best) {
-            const b = best.a;
-            const k2 = this.key(b);
-            this.frontier.delete(k2);
-            const p = this.axialToPoint(b);
-            if (!this.withinArea(p))
-                return false;
-            this.place(b, best.color);
-            this.renderCircle(b, p);
-            this.updateCount();
-            return true;
-        }
-        return false;
-    }
-    reset({ this: , placed, clear }) { }
-}
-();
-this.frontier.clear();
-this.order.length = 0;
-this.colorByKey.clear();
-this.gCircles.replaceChildren();
-this.sizeFactorByKey.clear();
-this.place({ u: 0, v: 0 });
-const p0 = this.axialToPoint({ u: 0, v: 0 });
-this.renderCircle({ u: 0, v: 0 }, p0);
-this.updateCount();
-getSvgBackgroundRgb();
-RGB;
-{
-    const cs = getComputedStyle(this.svg);
-    const bg = cs.backgroundColor || '#10131a';
-    return parseCssColorToRgb(String(bg)) || { r: 16, g: 19, b: 26 };
-}
-renderAll();
-{
-    this.gCircles.replaceChildren();
-    for (const a of this.order) {
+    reset() { this.placed.clear(); this.frontier.clear(); this.order.length = 0; this.colorByKey.clear(); this.gCircles.replaceChildren(); this.sizeFactorByKey.clear(); this.place({ u: 0, v: 0 }); const p0 = this.axialToPoint({ u: 0, v: 0 }); this.renderCircle({ u: 0, v: 0 }, p0); this.updateCount(); }
+    getSvgBackgroundRgb() { const cs = getComputedStyle(this.svg); const bg = cs.backgroundColor || '#10131a'; return parseCssColorToRgb(String(bg)) || { r: 16, g: 19, b: 26 }; }
+    renderAll() { this.gCircles.replaceChildren(); for (const a of this.order) {
         const p = this.axialToPoint(a);
         if (this.withinArea(p))
             this.renderCircle(a, p);
+    } }
+    renderCircle(a, p) {
+        var _a;
+        const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        c.setAttribute('class', 'node');
+        c.setAttribute('cx', String(p.x));
+        c.setAttribute('cy', String(p.y));
+        {
+            const rk = this.key(a);
+            const rf = (_a = this.sizeFactorByKey.get(rk)) !== null && _a !== void 0 ? _a : 1;
+            c.setAttribute('r', String(Math.max(1, Math.round(this.radius * rf))));
+        }
+        ;
+        c.setAttribute('data-key', this.key(a));
+        const fill = this.colorByKey.get(this.key(a));
+        if (fill)
+            c.style.fill = fill;
+        const bgRgb = this.getSvgBackgroundRgb();
+        const fillRgb = parseCssColorToRgb(fill || getComputedStyle(c).fill || '#60a5fa');
+        const ratio = contrastRatio(fillRgb, bgRgb);
+        if (isVeryDark(fillRgb)) {
+            const haloOuter = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            haloOuter.setAttribute('cx', String(p.x));
+            haloOuter.setAttribute('cy', String(p.y));
+            haloOuter.setAttribute('r', String(this.radius));
+            haloOuter.setAttribute('fill', 'none');
+            haloOuter.setAttribute('stroke', '#cbd5e1');
+            haloOuter.setAttribute('stroke-width', String(Math.max(4, Math.round(this.radius * 0.42))));
+            haloOuter.setAttribute('stroke-linejoin', 'round');
+            haloOuter.setAttribute('stroke-linecap', 'round');
+            const haloInner = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            haloInner.setAttribute('cx', String(p.x));
+            haloInner.setAttribute('cy', String(p.y));
+            haloInner.setAttribute('r', String(this.radius));
+            haloInner.setAttribute('fill', 'none');
+            haloInner.setAttribute('stroke', '#ffffff');
+            haloInner.setAttribute('stroke-width', String(Math.max(3, Math.round(this.radius * 0.28))));
+            haloInner.setAttribute('stroke-linejoin', 'round');
+            haloInner.setAttribute('stroke-linecap', 'round');
+            this.gCircles.appendChild(haloOuter);
+            this.gCircles.appendChild(haloInner);
+            this.gCircles.appendChild(c);
+        }
+        else if (ratio < 2.0) {
+            c.setAttribute('stroke', '#ffffff');
+            c.setAttribute('stroke-width', String(Math.max(3, Math.round(this.radius * 0.3))));
+            c.setAttribute('stroke-opacity', '0.95');
+            c.setAttribute('shape-rendering', 'geometricPrecision');
+            this.gCircles.appendChild(c);
+        }
+        else if (ratio < 3.0) {
+            c.setAttribute('stroke', '#ffffff');
+            c.setAttribute('stroke-width', String(Math.max(2, Math.round(this.radius * 0.18))));
+            c.setAttribute('stroke-opacity', '0.9');
+            c.setAttribute('shape-rendering', 'geometricPrecision');
+            this.gCircles.appendChild(c);
+        }
+        else {
+            c.removeAttribute('stroke');
+            c.removeAttribute('stroke-width');
+            c.removeAttribute('stroke-opacity');
+            this.gCircles.appendChild(c);
+        }
     }
-}
-renderCircle(a, Axial, p, Point);
-{
-    const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    c.setAttribute('class', 'node');
-    c.setAttribute('cx', String(p.x));
-    c.setAttribute('cy', String(p.y));
-    {
-        const rk = this.key(a);
-        const rf = (_a = this.sizeFactorByKey.get(rk)) !== null && _a !== void 0 ? _a : 1;
-        c.setAttribute('r', String(Math.max(1, Math.round(this.radius * rf))));
+    applyHalftoneFromSampler(s, fit) {
+        this.sizeFactorByKey.clear();
+        for (const a of this.order) {
+            const p = this.axialToPoint(a);
+            const rgb = s.sampleAt(p, this.areaW, this.areaH, fit) || { r: 16, g: 19, b: 26 };
+            const L = relLuminance(rgb);
+            const f = Math.max(0.35, Math.min(1.0, 1.0 - L));
+            this.sizeFactorByKey.set(this.key(a), f);
+        }
+        this.renderAll();
     }
-    ;
-    c.setAttribute('data-key', this.key(a));
-    const fill = this.colorByKey.get(this.key(a));
-    if (fill)
-        c.style.fill = fill;
-    const bgRgb = this.getSvgBackgroundRgb();
-    const fillRgb = parseCssColorToRgb(fill || getComputedStyle(c).fill || '#60a5fa');
-    const ratio = contrastRatio(fillRgb, bgRgb);
-    if (isVeryDark(fillRgb)) {
-        const haloOuter = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        haloOuter.setAttribute('cx', String(p.x));
-        haloOuter.setAttribute('cy', String(p.y));
-        haloOuter.setAttribute('r', String(this.radius));
-        haloOuter.setAttribute('fill', 'none');
-        haloOuter.setAttribute('stroke', '#cbd5e1');
-        haloOuter.setAttribute('stroke-width', String(Math.max(4, Math.round(this.radius * 0.42))));
-        haloOuter.setAttribute('stroke-linejoin', 'round');
-        haloOuter.setAttribute('stroke-linecap', 'round');
-        const haloInner = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        haloInner.setAttribute('cx', String(p.x));
-        haloInner.setAttribute('cy', String(p.y));
-        haloInner.setAttribute('r', String(this.radius));
-        haloInner.setAttribute('fill', 'none');
-        haloInner.setAttribute('stroke', '#ffffff');
-        haloInner.setAttribute('stroke-width', String(Math.max(3, Math.round(this.radius * 0.28))));
-        haloInner.setAttribute('stroke-linejoin', 'round');
-        haloInner.setAttribute('stroke-linecap', 'round');
-        this.gCircles.appendChild(haloOuter);
-        this.gCircles.appendChild(haloInner);
-        this.gCircles.appendChild(c);
+    clearHalftone() { this.sizeFactorByKey.clear(); this.renderAll(); }
+    applyDitherMixFromSampler(s, fit, palette) {
+        if (!s || !s.isReady || !s.isReady()) {
+            return;
+        }
+        for (const a of this.order) {
+            const p = this.axialToPoint(a);
+            const rgb = s.sampleAt(p, this.areaW, this.areaH, fit) || { r: 16, g: 19, b: 26 };
+            const pair = nearestTwoFromPalette(rgb, palette);
+            const r = pair.db / Math.max(1e-6, (pair.da + pair.db));
+            const thr = bayer8(a.u, a.v);
+            const pick = (r >= thr) ? pair.a : pair.b;
+            this.colorByKey.set(this.key(a), pick);
+        }
+        this.renderAll();
     }
-    else if (ratio < 2.0) {
-        c.setAttribute('stroke', '#ffffff');
-        c.setAttribute('stroke-width', String(Math.max(3, Math.round(this.radius * 0.3))));
-        c.setAttribute('stroke-opacity', '0.95');
-        c.setAttribute('shape-rendering', 'geometricPrecision');
-        this.gCircles.appendChild(c);
-    }
-    else if (ratio < 3.0) {
-        c.setAttribute('stroke', '#ffffff');
-        c.setAttribute('stroke-width', String(Math.max(2, Math.round(this.radius * 0.18))));
-        c.setAttribute('stroke-opacity', '0.9');
-        c.setAttribute('shape-rendering', 'geometricPrecision');
-        this.gCircles.appendChild(c);
-    }
-    else {
-        c.removeAttribute('stroke');
-        c.removeAttribute('stroke-width');
-        c.removeAttribute('stroke-opacity');
-        this.gCircles.appendChild(c);
-    }
-}
-applyHalftoneFromSampler(s, any, fit, 'cover' | 'contain' | 'fill');
-{
-    this.sizeFactorByKey.clear();
-    for (const a of this.order) {
-        const p = this.axialToPoint(a);
-        const rgb = s.sampleAt(p, this.areaW, this.areaH, fit) || { r: 16, g: 19, b: 26 };
-        const L = relLuminance(rgb);
-        const f = Math.max(0.35, Math.min(1.0, 1.0 - L));
-        this.sizeFactorByKey.set(this.key(a), f);
-    }
-    this.renderAll();
-}
-clearHalftone();
-{
-    this.sizeFactorByKey.clear();
-    this.renderAll();
-}
-applyDitherMixFromSampler(s, any, fit, 'cover' | 'contain' | 'fill', palette, ColorEntry[]);
-{
-    if (!s || !s.isReady || !s.isReady()) {
-        return;
-    }
-    for (const a of this.order) {
-        const p = this.axialToPoint(a);
-        const rgb = s.sampleAt(p, this.areaW, this.areaH, fit) || { r: 16, g: 19, b: 26 };
-        const pair = nearestTwoFromPalette(rgb, palette);
-        const r = pair.db / Math.max(1e-6, (pair.da + pair.db));
-        const thr = bayer8(a.u, a.v);
-        const pick = (r >= thr) ? pair.a : pair.b;
-        this.colorByKey.set(this.key(a), pick);
-    }
-    this.renderAll();
-}
-updateCount();
-{
-    this.countLabel.textContent = String(this.order.length);
+    updateCount() { this.countLabel.textContent = String(this.order.length); }
 }
 function main() {
     const host = document.getElementById('svgHost');
@@ -954,155 +926,144 @@ function main() {
             const pick = all[Math.floor(Math.random() * all.length)].value;
             model.addClockWithColor(pick);
         }
-        else if (strat === 'clock2') {
-            const all = palette.colors;
-            if (!all.length)
-                return;
-            const pick = all[Math.floor(Math.random() * all.length)].value;
-            model.addClockV2WithColor(pick);
-        }
-        else if (strat === 'clock3') { }
         else if (strat === 'ca-palette') {
             model.addCAPaletteStep(palette.colors, (palette.selected && palette.selected.id) || undefined);
         }
         else {
-            const sel = palette.selected;
-            if (!sel)
-                return;
-            model.addRandomWithColor(sel.value);
         }
-    };
-    document.getElementById('btnAddRandomAny').onclick = () => { var _a; const all = palette.colors; if (!all.length)
-        return; const pick = all[Math.floor(Math.random() * all.length)].value; const strat = ((_a = document.getElementById('strategySelect')) === null || _a === void 0 ? void 0 : _a.value) || 'frontier'; if (strat === 'clock')
-        model.addClockWithColor(pick);
-    else if (strat === 'clock2')
-        model.addClockV2WithColor(pick);
-    else if (strat === 'clock3')
-        model.addClockV3WithColor(pick);
-    else if (strat === 'ca-color')
-        model.addCAColorStep('majority2');
-    else
-        model.addRandomWithColor(pick); };
-    const imgSampler = new ImageSampler();
-    const fileInput = document.getElementById('imgFile');
-    const fitSelect = document.getElementById('imgFit');
-    const btnMapNow = document.getElementById('btnMapNow');
-    if (fileInput)
-        fileInput.onchange = async () => {
-            const f = fileInput.files && fileInput.files[0];
-            if (f) {
-                try {
-                    await imgSampler.loadFile(f);
-                }
-                catch (e) {
-                    console.error('image load error', e);
-                }
-            }
-        };
-    if (btnMapNow)
-        btnMapNow.onclick = async () => {
-            var _a;
-            if (!imgSampler.isReady()) {
-                console.warn('No image loaded');
-                return;
-            }
-            const fit = ((fitSelect === null || fitSelect === void 0 ? void 0 : fitSelect.value) || 'cover');
-            // Build full honeycomb first
-            let guard = 0;
-            while (model.addOne()) {
-                if (++guard > 150000)
-                    break;
-            }
-            const pal = palette.colors;
-            const modeSel = document.getElementById('fillMode');
-            const mode = ((modeSel === null || modeSel === void 0 ? void 0 : modeSel.value) || 'v1');
-            if (mode === 'v2') {
-                model.applyDitherMixFromSampler(imgSampler, fit, pal);
-            }
-            else {
-                const o = model;
-                const order = o.order || [];
-                for (const a of order) {
-                    const p = o.axialToPoint(a);
-                    const rgb = imgSampler.sampleAt(p, o.areaW, o.areaH, fit) || { r: 16, g: 19, b: 26 };
-                    let best = ((_a = pal[0]) === null || _a === void 0 ? void 0 : _a.value) || '#000';
-                    let bestD = Infinity;
-                    for (const e of pal) {
-                        const pr = parseCssColorToRgb(e.value) || { r: 0, g: 0, b: 0 };
-                        const d = rgbDist2(rgb, pr);
-                        if (d < bestD) {
-                            bestD = d;
-                            best = e.value;
-                        }
+        ;
+        document.getElementById('btnAddRandomAny').onclick = () => { var _a; const all = palette.colors; if (!all.length)
+            return; const pick = all[Math.floor(Math.random() * all.length)].value; const strat = ((_a = document.getElementById('strategySelect')) === null || _a === void 0 ? void 0 : _a.value) || 'frontier'; if (strat === 'clock')
+            model.addClockWithColor(pick);
+        else if (strat === 'clock2')
+            model.addClockV2WithColor(pick);
+        else if (strat === 'clock3')
+            model.addClockV3WithColor(pick);
+        else if (strat === 'ca-color')
+            model.addCAColorStep('majority2');
+        else
+            model.addRandomWithColor(pick); };
+        const imgSampler = new ImageSampler();
+        const fileInput = document.getElementById('imgFile');
+        const fitSelect = document.getElementById('imgFit');
+        const btnMapNow = document.getElementById('btnMapNow');
+        if (fileInput)
+            fileInput.onchange = async () => {
+                const f = fileInput.files && fileInput.files[0];
+                if (f) {
+                    try {
+                        await imgSampler.loadFile(f);
                     }
-                    o.colorByKey.set(o.key(a), best);
+                    catch (e) {
+                        console.error('image load error', e);
+                    }
                 }
-                o.renderAll();
+            };
+        if (btnMapNow)
+            btnMapNow.onclick = async () => {
+                var _a;
+                if (!imgSampler.isReady()) {
+                    console.warn('No image loaded');
+                    return;
+                }
+                const fit = ((fitSelect === null || fitSelect === void 0 ? void 0 : fitSelect.value) || 'cover');
+                // Build full honeycomb first
+                let guard = 0;
+                while (model.addOne()) {
+                    if (++guard > 150000)
+                        break;
+                }
+                const pal = palette.colors;
+                const modeSel = document.getElementById('fillMode');
+                const mode = ((modeSel === null || modeSel === void 0 ? void 0 : modeSel.value) || 'v1');
+                if (mode === 'v2') {
+                    model.applyDitherMixFromSampler(imgSampler, fit, pal);
+                }
+                else {
+                    const o = model;
+                    const order = o.order || [];
+                    for (const a of order) {
+                        const p = o.axialToPoint(a);
+                        const rgb = imgSampler.sampleAt(p, o.areaW, o.areaH, fit) || { r: 16, g: 19, b: 26 };
+                        let best = ((_a = pal[0]) === null || _a === void 0 ? void 0 : _a.value) || '#000';
+                        let bestD = Infinity;
+                        for (const e of pal) {
+                            const pr = parseCssColorToRgb(e.value) || { r: 0, g: 0, b: 0 };
+                            const d = rgbDist2(rgb, pr);
+                            if (d < bestD) {
+                                bestD = d;
+                                best = e.value;
+                            }
+                        }
+                        o.colorByKey.set(o.key(a), best);
+                    }
+                    o.renderAll();
+                }
+            };
+    };
+    document.addEventListener('DOMContentLoaded', main);
+    function nearestTwoFromPalette(rgb, palette) {
+        let bestA = '#000000', bestB = '#000000';
+        let da = Infinity, db = Infinity;
+        for (const e of palette) {
+            const pr = parseCssColorToRgb(e.value) || { r: 0, g: 0, b: 0 };
+            const d = rgbDist2(rgb, pr);
+            if (d < da) {
+                db = da;
+                bestB = bestA;
+                da = d;
+                bestA = e.value;
             }
-        };
-}
-document.addEventListener('DOMContentLoaded', main);
-function nearestTwoFromPalette(rgb, palette) {
-    let bestA = '#000000', bestB = '#000000';
-    let da = Infinity, db = Infinity;
-    for (const e of palette) {
-        const pr = parseCssColorToRgb(e.value) || { r: 0, g: 0, b: 0 };
-        const d = rgbDist2(rgb, pr);
-        if (d < da) {
-            db = da;
-            bestB = bestA;
-            da = d;
-            bestA = e.value;
+            else if (d < db) {
+                db = d;
+                bestB = e.value;
+            }
         }
-        else if (d < db) {
-            db = d;
-            bestB = e.value;
+        if (bestB === bestA && palette.length > 1) {
+            const alt = palette.find(x => x.value !== bestA);
+            if (alt) {
+                bestB = alt.value;
+                db = rgbDist2(rgb, parseCssColorToRgb(bestB));
+            }
         }
+        return { a: bestA, b: bestB, da, db };
     }
-    if (bestB === bestA && palette.length > 1) {
-        const alt = palette.find(x => x.value !== bestA);
-        if (alt) {
-            bestB = alt.value;
-            db = rgbDist2(rgb, parseCssColorToRgb(bestB));
+    const BAYER8 = [
+        0, 48, 12, 60, 3, 51, 15, 63,
+        32, 16, 44, 28, 35, 19, 47, 31,
+        8, 56, 4, 52, 11, 59, 7, 55,
+        40, 24, 36, 20, 43, 27, 39, 23,
+        2, 50, 14, 62, 1, 49, 13, 61,
+        34, 18, 46, 30, 33, 17, 45, 29,
+        10, 58, 6, 54, 9, 57, 5, 53,
+        42, 26, 38, 22, 41, 25, 37, 21
+    ].map(v => v / 64);
+    function bayer8(u, v) { const i = ((u % 8) + 8) % 8, j = ((v % 8) + 8) % 8; return BAYER8[j * 8 + i]; }
+    // ImageSampler + color distance helpers
+    class ImageSampler {
+        constructor() {
+            this.w = 0;
+            this.h = 0;
+            this.data = null;
+            this.canvas = document.createElement('canvas');
+            const c = this.canvas.getContext('2d');
+            if (!c)
+                throw new Error('2d');
+            this.ctx = c;
         }
+        async loadFile(file) { const url = await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result)); fr.onerror = () => rej(fr.error); fr.readAsDataURL(file); }); const img = await new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = e => rej(e); im.src = url; }); this.w = img.naturalWidth || img.width; this.h = img.naturalHeight || img.height; this.canvas.width = this.w; this.canvas.height = this.h; this.ctx.drawImage(img, 0, 0); this.data = this.ctx.getImageData(0, 0, this.w, this.h); }
+        isReady() { return !!this.data; }
+        sampleAt(p, areaW, areaH, fit) { if (!this.data)
+            return null; const imgW = this.w, imgH = this.h; let sx = areaW / imgW, sy = areaH / imgH; if (fit === 'cover') {
+            const s = Math.max(sx, sy);
+            sx = sy = s;
+        }
+        else if (fit === 'contain') {
+            const s = Math.min(sx, sy);
+            sx = sy = s;
+        } const offX = (areaW - imgW * sx) / 2, offY = (areaH - imgH * sy) / 2; const ax = p.x + areaW / 2, ay = p.y + areaH / 2; const ix = (ax - offX) / sx, iy = (ay - offY) / sy; const x = Math.floor(ix), y = Math.floor(iy); if (x < 0 || y < 0 || x >= imgW || y >= imgH)
+            return null; const i = (y * imgW + x) * 4, d = this.data.data; return { r: d[i], g: d[i + 1], b: d[i + 2] }; }
     }
-    return { a: bestA, b: bestB, da, db };
+    function srgbToLinear(v) { v /= 255; return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }
+    function rgbDist2(a, b) { const ar = srgbToLinear(a.r), ag = srgbToLinear(a.g), ab = srgbToLinear(a.b); const br = srgbToLinear(b.r), bg = srgbToLinear(b.g), bb = srgbToLinear(b.b); const dr = ar - br, dg = ag - bg, db = ab - bb; return dr * dr + dg * dg + db * db; }
 }
-const BAYER8 = [
-    0, 48, 12, 60, 3, 51, 15, 63,
-    32, 16, 44, 28, 35, 19, 47, 31,
-    8, 56, 4, 52, 11, 59, 7, 55,
-    40, 24, 36, 20, 43, 27, 39, 23,
-    2, 50, 14, 62, 1, 49, 13, 61,
-    34, 18, 46, 30, 33, 17, 45, 29,
-    10, 58, 6, 54, 9, 57, 5, 53,
-    42, 26, 38, 22, 41, 25, 37, 21
-].map(v => v / 64);
-function bayer8(u, v) { const i = ((u % 8) + 8) % 8, j = ((v % 8) + 8) % 8; return BAYER8[j * 8 + i]; }
-// ImageSampler + color distance helpers
-class ImageSampler {
-    constructor() {
-        this.w = 0;
-        this.h = 0;
-        this.data = null;
-        this.canvas = document.createElement('canvas');
-        const c = this.canvas.getContext('2d');
-        if (!c)
-            throw new Error('2d');
-        this.ctx = c;
-    }
-    async loadFile(file) { const url = await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result)); fr.onerror = () => rej(fr.error); fr.readAsDataURL(file); }); const img = await new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = e => rej(e); im.src = url; }); this.w = img.naturalWidth || img.width; this.h = img.naturalHeight || img.height; this.canvas.width = this.w; this.canvas.height = this.h; this.ctx.drawImage(img, 0, 0); this.data = this.ctx.getImageData(0, 0, this.w, this.h); }
-    isReady() { return !!this.data; }
-    sampleAt(p, areaW, areaH, fit) { if (!this.data)
-        return null; const imgW = this.w, imgH = this.h; let sx = areaW / imgW, sy = areaH / imgH; if (fit === 'cover') {
-        const s = Math.max(sx, sy);
-        sx = sy = s;
-    }
-    else if (fit === 'contain') {
-        const s = Math.min(sx, sy);
-        sx = sy = s;
-    } const offX = (areaW - imgW * sx) / 2, offY = (areaH - imgH * sy) / 2; const ax = p.x + areaW / 2, ay = p.y + areaH / 2; const ix = (ax - offX) / sx, iy = (ay - offY) / sy; const x = Math.floor(ix), y = Math.floor(iy); if (x < 0 || y < 0 || x >= imgW || y >= imgH)
-        return null; const i = (y * imgW + x) * 4, d = this.data.data; return { r: d[i], g: d[i + 1], b: d[i + 2] }; }
-}
-function srgbToLinear(v) { v /= 255; return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }
-function rgbDist2(a, b) { const ar = srgbToLinear(a.r), ag = srgbToLinear(a.g), ab = srgbToLinear(a.b); const br = srgbToLinear(b.r), bg = srgbToLinear(b.g), bb = srgbToLinear(b.b); const dr = ar - br, dg = ag - bg, db = ab - bb; return dr * dr + dg * dg + db * db; }

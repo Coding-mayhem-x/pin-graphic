@@ -207,6 +207,122 @@ var CARules;
     }
     document.addEventListener('DOMContentLoaded', interceptRunner);
 })();
+// CA v2 fairness update: round-robin per color, grow that color's smallest island first.
+(function () {
+    const g = window;
+    g.__caV2 = g.__caV2 || { idx: 0 };
+    function rrIndex(n) { const g = window.__caV2; if (!g)
+        return 0; g.idx = (g.idx || 0) % Math.max(1, n); const out = g.idx; g.idx = (g.idx + 1) % Math.max(1, n); return out; }
+    function smallestCompOfColor(model, color) {
+        const comps = model.componentsOfColor ? model.componentsOfColor(color) : [];
+        let best = null;
+        for (const c of comps) {
+            if (!best || c.length < best.length)
+                best = c;
+        }
+        return best || [];
+    }
+    function tryGrowColor(model, color) {
+        const comp = smallestCompOfColor(model, color);
+        if (!comp.length)
+            return null;
+        const frees = model.freeNeighbors(comp);
+        for (const f of frees) {
+            // B2 for this specific color, with gentle bridging if total >= 2
+            const by = (function () { const m = new Map(); for (const n of model.neighbors(f)) {
+                const nk = model.key(n);
+                if (model.placed.has(nk)) {
+                    const col = model.colorByKey.get(nk);
+                    if (col) {
+                        m.set(col, (m.get(col) || 0) + 1);
+                    }
+                }
+            } return m; })();
+            const total = Array.from(by.values()).reduce((s, n) => s + n, 0);
+            const nSame = by.get(color) || 0;
+            if (nSame >= 2 || total >= 2) {
+                const pt = model.axialToPoint(f);
+                if (model.withinArea(pt))
+                    return { a: f, color };
+            }
+        }
+        return null;
+    }
+    function placeCAV2_Fair() {
+        const model = window.honeyModel;
+        const pal = window.paletteManager;
+        if (!model || !pal)
+            return false;
+        const palette = pal.colors;
+        if (!palette.length)
+            return false;
+        const start = rrIndex(palette.length);
+        for (let k = 0; k < palette.length; k++) {
+            const color = palette[(start + k) % palette.length].value;
+            const pick = tryGrowColor(model, color);
+            if (pick) {
+                const id = model.key(pick.a);
+                model.frontier.delete(id);
+                const p = model.axialToPoint(pick.a);
+                if (!model.withinArea(p))
+                    continue;
+                model.place(pick.a, pick.color);
+                model.renderCircle(pick.a, p);
+                model.updateCount();
+                return true;
+            }
+        }
+        // Fallback to previous global behavior when nothing eligible
+        return (function () {
+            const sel = document.getElementById('strategySelect');
+            const prev = sel === null || sel === void 0 ? void 0 : sel.value;
+            if (sel)
+                sel.value = 'ca-v2';
+            try {
+                return (function () {
+                    // reuse old placeCAV2 if present
+                    const F = window.__placeCAV2_old;
+                    if (typeof F === 'function')
+                        return F();
+                    return false;
+                })();
+            }
+            finally {
+                if (sel && prev)
+                    sel.value = prev;
+            }
+        })();
+    }
+    // Replace CA v2 handlers to call fair variant
+    function rewire() {
+        const sel = document.getElementById('strategySelect');
+        if (!sel)
+            return;
+        if (!Array.from(sel.options).some(o => o.value === 'ca-v2')) {
+            const opt = document.createElement('option');
+            opt.value = 'ca-v2';
+            opt.textContent = 'CA v2';
+            sel.appendChild(opt);
+        }
+        const btnAny = document.getElementById('btnAddRandomAny');
+        if (btnAny) {
+            btnAny.addEventListener('click', function (ev) { const cur = (sel.value || ''); if (cur === 'ca-v2') {
+                ev.stopImmediatePropagation();
+                ev.preventDefault();
+                placeCAV2_Fair();
+            } }, true);
+        }
+        const btnSel = document.getElementById('btnAddRandomColor');
+        if (btnSel) {
+            btnSel.addEventListener('click', function (ev) { const cur = (sel.value || ''); if (cur === 'ca-v2') {
+                ev.stopImmediatePropagation();
+                ev.preventDefault();
+                placeCAV2_Fair();
+            } }, true);
+        }
+    }
+    document.addEventListener('DOMContentLoaded', rewire);
+})();
 /// <reference path="./ca_rules.ts" />
 /* Clean TypeScript build for Honeycomb Circles Simulator */
 const LS_PALETTE_KEY = 'honeycomb.palette.v1';

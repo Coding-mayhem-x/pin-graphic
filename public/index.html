@@ -13,6 +13,14 @@
     <button id="sideToggle" class="bookmark" title="Toggle sidebar" aria-label="Toggle sidebar">☰</button>
     <div class="side-content">
       <h1>Kontrola</h1>
+    <details class="diag" id="diagDetails"><summary>Diagnostics</summary>
+      
+      <div class="diag-controls">
+        <button id="btnDiagCounts" title="Count circles by color">Compute Counts</button>
+      </div>
+      <div id="diagOutput" class="diag-output" aria-live="polite"></div>
+    </details>
+
       <div class="panel">
         <button id="btnAddOne">Add one</button>
         <button id="btnAddSix">Add six</button>
@@ -72,13 +80,7 @@
           <button id="btnMapNow">Map Now</button>
         </div>
       </section>
-    </section></section>    <details class="diag" id="diagDetails"><summary>Diagnostics</summary>
-      
-      <div class="diag-controls">
-        <button id="btnDiagCounts" title="Count circles by color">Compute Counts</button>
-      </div>
-      <div id="diagOutput" class="diag-output" aria-live="polite"></div>
-    </details>
+    </section></section>    
     </div>
   </aside>
     <main class="stage">
@@ -109,6 +111,7 @@
   </script>
 </body>
 </html>
+
 
 
 

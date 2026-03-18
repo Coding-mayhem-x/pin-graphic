@@ -1150,13 +1150,11 @@ if (appRoot && sideToggle) {
             appRoot.classList.add('collapsed');
     }
     catch { }
-    sideToggle.onclick = () => {
-        appRoot.classList.toggle('collapsed');
-        try {
-            localStorage.setItem(LS_SIDE, appRoot.classList.contains('collapsed') ? '1' : '0');
-        }
-        catch { }
-    };
+    sideToggle.onclick = () => { const wasCollapsed = appRoot.classList.contains('collapsed'); appRoot.classList.toggle('collapsed'); try {
+        localStorage.setItem(LS_SIDE, appRoot.classList.contains('collapsed') ? '1' : '0');
+    }
+    catch { } const det = document.getElementById('diagDetails'); if (det)
+        det.open = wasCollapsed; };
 }
 const btnDiag = document.getElementById('btnDiagCounts');
 const diagOut = document.getElementById('diagOutput');

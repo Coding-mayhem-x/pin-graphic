@@ -109,3 +109,4 @@ interface Window { honeyModel?: any; }
 
   document.addEventListener('DOMContentLoaded', rewire);
 })();
+
